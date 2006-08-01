@@ -28,7 +28,7 @@ struct argblock {
 	CFStringRef type, translate_type; //UTIs
 
 	struct {
-		unsigned reserved: 27;
+		unsigned reserved: 26;
 		enum {
 			global_options,
 			subcommand,
@@ -36,6 +36,7 @@ struct argblock {
 		} phase: 2;
 		unsigned no_translate: 1; //refers to UTF-16 <-> MacRoman translation.
 		unsigned has_args: 1;
+		unsigned infer_translate_newlines: 1; //Fill in translate_newlines based on value of type. Default 1; set to 0 when translate_newlines is set explicitly.
 		unsigned translate_newlines: 1;
 	} flags;
 } pb;
@@ -161,26 +162,33 @@ Boolean testarg(const char *a, const char *b, const char **param) {
 
 static inline void initpb(struct argblock *pbptr) {
 	pbptr->proc = NULL;
+
 	pbptr->in_fd  =  STDIN_FILENO;
 	pbptr->out_fd = STDOUT_FILENO;
-	pbptr->pasteboard = NULL;
-	pbptr->pasteboardID =
-	pbptr->type = 
-	pbptr->translate_type = NULL;
-	pbptr->pasteboardID_cstr = NULL;
-	pbptr->flags.reserved = 0U;
-	pbptr->flags.phase = global_options;
-	pbptr->flags.has_args = false;
-	pbptr->flags.translate_newlines = true;
+
+	pbptr->pasteboard                     = NULL;
+
+	pbptr->pasteboardID                   =
+	pbptr->type                           = 
+	pbptr->translate_type                 = NULL;
+	pbptr->pasteboardID_cstr              = NULL;
+
+	pbptr->flags.reserved                 = 0U;
+	pbptr->flags.phase                    = global_options;
+	pbptr->flags.has_args                 = false;
+	pbptr->flags.infer_translate_newlines = true;
+	pbptr->flags.translate_newlines       = true;
 }
 
 int parsearg(const char *arg, struct argblock *pbptr) {
 	const char *param;
 	switch(pbptr->flags.phase) {
 		case global_options:
-			if(testarg(arg, "--type=", &param))
+			if(testarg(arg, "--type=", &param)) {
 				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
-			else if(testarg(arg, "--translate-type=", &param))
+				if(pbptr->flags.infer_translate_newlines)
+					pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, CFSTR("kUTTypeText"));
+			} else if(testarg(arg, "--translate-type=", &param))
 				pbptr->translate_type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
 			else if(testarg(arg, "--pasteboard=", &param)) {
 				pbptr->pasteboardID_cstr = param;
@@ -189,11 +197,13 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 				pbptr->in_fd = open(param, O_RDONLY, 0644);
 			else if(testarg(arg, "--out-file=", &param))
 				pbptr->out_fd = open(param, O_WRONLY | O_CREAT, 0644);
-			else if(testarg(arg, "--no-translate-newlines", NULL))
-				pbptr->flags.translate_newlines = false;
-			else if(testarg(arg, "--translate-newlines", NULL))
-				pbptr->flags.translate_newlines = true;
-			else if(testarg(arg, "copy", NULL)
+			else if(testarg(arg, "--no-translate-newlines", NULL)) {
+				pbptr->flags.infer_translate_newlines = false;
+				pbptr->flags.translate_newlines       = false;
+			} else if(testarg(arg, "--translate-newlines", NULL)) {
+				pbptr->flags.infer_translate_newlines = false;
+				pbptr->flags.translate_newlines       = true;
+			} else if(testarg(arg, "copy", NULL)
 				 || testarg(arg, "paste", NULL)
 				 || testarg(arg, "paste-growl", NULL)
 				 || testarg(arg, "clear", NULL)
@@ -530,7 +540,10 @@ pure_data:
 	}
 
 	if(err != noErr) {
-		fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
+		if(err == badPasteboardFlavorErr)
+			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": it does not exist in flavor type \"%s\".\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
+		else
+			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
 		retval = 2;
 	} else {
 		CFIndex length = CFDataGetLength(data);
