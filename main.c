@@ -187,7 +187,7 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 			if(testarg(arg, "--type=", &param)) {
 				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
 				if(pbptr->flags.infer_translate_newlines)
-					pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, CFSTR("kUTTypeText"));
+					pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, CFSTR("public.text"));
 			} else if(testarg(arg, "--translate-type=", &param))
 				pbptr->translate_type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
 			else if(testarg(arg, "--pasteboard=", &param)) {
