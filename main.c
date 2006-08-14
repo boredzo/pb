@@ -868,14 +868,16 @@ int list(struct argblock *pbptr) {
 
 				//make this next step optional! (list --verbose, maybe)
 				//if verbose...
-				CFDataRef flavorData;
-				PasteboardCopyItemFlavorData(pbptr->pasteboard, item, flavor, &flavorData);
+				CFDataRef flavorData = NULL;
+				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, flavor, &flavorData);
 
-				printf("\t%s (%lli bytes)\n", flavor_c, (long long)CFDataGetLength(flavorData));
+				if(err == noErr) {
+					printf("\t%s (%lli bytes)\n", flavor_c, (long long)CFDataGetLength(flavorData));
+					CFRelease(flavorData);
+				} else
+					printf("\t%s (??? bytes; PasteboardCopyItemFlavorData returned %li)\n", flavor_c, (long)err);
 				//else...
 				//	printf("\t%s\n", flavor_c);
-
-				CFRelease(flavorData);
 			}
 		}
 	}
