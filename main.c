@@ -28,13 +28,12 @@ struct argblock {
 	CFStringRef type; //UTI
 
 	struct {
-		unsigned reserved: 26;
+		unsigned reserved: 27;
 		enum {
 			global_options,
 			subcommand,
 			subcommand_options
 		} phase: 2;
-		unsigned no_translate: 1; //refers to UTF-16 <-> MacRoman translation.
 		unsigned has_args: 1;
 		unsigned infer_translate_newlines: 1; //Fill in translate_newlines based on value of type. Default 1; set to 0 when translate_newlines is set explicitly.
 		unsigned translate_newlines: 1;
