@@ -6,18 +6,19 @@
 #include <sys/mman.h>
 #include "GrowlDefines.h"
 
-/*	to-do:
- *	- add --file in copy and paste subcmds
- *	- add multicopy subcmd: multicopy [options] filename [options] filename ...
+/*	To-do:
+ *	- Add --file in copy and paste subcmds
+ *	- Add multicopy subcmd: multicopy [options] filename [options] filename …
+ *	- Collapse in_fd, out_fd to one FD.
  */
 
 struct argblock {
 	int (*proc)(struct argblock *);
 
 	const char *filename;
-	int in_fd, out_fd; //collapse this to one FD!
+	int in_fd, out_fd; //Collapse this to one FD!
 
-	//parameters for subcommands.
+	//Parameters for subcommands.
 	int argc;
 	const char **argv;
 
@@ -61,7 +62,7 @@ int version(struct argblock *pbptr);
 
 const char *argv0 = NULL;
 
-//this table swaps ^M (\x0d) and ^J (\x0a).
+//This table swaps ^M (\x0d) and ^J (\x0a).
 static const unsigned char nl_translate_table[256] = 
 "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\r\x0b\x0c\n\x0e\x0f"
 "\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
@@ -98,7 +99,7 @@ int main(int argc, const char **argv) {
 		if(retval = parsearg(*++argv, &pb))
 			break;
 	}
-	//the subcommand gets our leftover arguments
+	//The subcommand gets our leftover arguments.
 	pb.argc = argc;
 	pb.argv = ++argv;
 
@@ -123,7 +124,7 @@ int main(int argc, const char **argv) {
 				pb.type = CFRetain(UTF8_UTI);
 			if(!isatty(pb.in_fd))
 				retval = copy(&pb);
-			//paste when...
+			//Paste when...
 			//- the output is not a tty, OR
 			//- the input was a tty (which means we didn't copy)
 			if((retval == 0) && (!isatty(pb.out_fd)) || isatty(pb.in_fd))
@@ -303,8 +304,8 @@ static const char *make_pasteboardID_cstr(struct argblock *pbptr) {
 }
 
 static PasteboardItemID getRandomPasteboardItemID(void) {
-	//item IDs are determined by the application creating the item.
-	//their meaning is up to that same application.
+	//Item IDs are determined by the application creating the item.
+	//Their meaning is up to that same application.
 	//pb doesn't need to associate any meaning with the item, so we just pull
 	//  the ID out of a hat.
 
@@ -313,14 +314,14 @@ static PasteboardItemID getRandomPasteboardItemID(void) {
 	srandom(time(NULL));
 	item = (PasteboardItemID)random();
 
-	//random returns a long, which is 4 bytes.
-	//but on Tiger, pointers can be 8 bytes, and PasteboardItemID is a pointer.
+	//Random returns a long, which is 4 bytes.
+	//But on Tiger, pointers can be 8 bytes, and PasteboardItemID is a pointer.
 	if(sizeof(PasteboardItemID) > sizeof(int)) {
 		ptrdiff_t itemInt = (((ptrdiff_t)item) << ((sizeof(PasteboardItemID) - sizeof(int)) * 8U)) ^ random();
 		item = (PasteboardItemID)itemInt;
 	}
 
-	//an item ID of 0 is illegal. make sure it doesn't happen.
+	//An item ID of 0 is illegal. Make sure it doesn't happen.
 	if(item == 0)
 		++item;
 
@@ -344,7 +345,7 @@ int copy(struct argblock *pbptr) {
 		} while(amt_read);
 		printf("read %zu bytes from stdin\n", total_size);
 	} else {
-		//regular file - map it
+		//This is a regular file. Map it.
 		struct stat sb;
 		int retval = fstat(pbptr->in_fd, &sb);
 		if(retval) {
@@ -384,10 +385,10 @@ int copy(struct argblock *pbptr) {
 	CFStringRef string;
 	CFDataRef data;
 	if(pbptr->type == NULL) {
-		//assume it's UTF-8. convert it to UTF-16.
+		//Assume it's UTF-8. Convert it to UTF-16.
 		string = CFStringCreateWithBytes(kCFAllocatorDefault, (const unsigned char *)buf, total_size, kCFStringEncodingUTF8, /*isExternalRepresentation*/ false);
 		if(string == NULL) {
-			//so much for that. call it MacRoman and copy the pure bytes.
+			//So much for that. Call it MacRoman and copy the pure bytes.
 			pbptr->type = CFRetain(MacRoman_UTI);
 			goto pure_data;
 		}
@@ -438,11 +439,11 @@ pure_data:
 			CFRelease(translator);
 		}
 		err = noErr;
-	} //end of translation code
+	} //End of translation code.
 
 	if(!string) {
-		//if --type was specified, there's no string form yet.
-		//we need to create one to do translation.
+		//If --type was specified, there's no string form yet.
+		//We need to create one to do translation.
 
 		CFStringEncoding encoding = 0;
 
@@ -458,7 +459,7 @@ pure_data:
 	}
 
 	if(string) {
-		//if we copied a text type (either UTF-16 or MacRoman), convert to the
+		//If we copied a text type (either UTF-16 or MacRoman), convert to the
 		//  other type if possible.
 
 		CFStringRef otherType = NULL;
@@ -470,7 +471,7 @@ pure_data:
 		&& !(pbptr->translate_type
 			&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, MacRoman_UTI, &flavorFlags) != noErr)))
 		{
-			//convert to MacRoman.
+			//Convert to MacRoman.
 			otherType = CFRetain(MacRoman_UTI);
 			otherEncoding = kCFStringEncodingMacRoman;
 		} else
@@ -478,7 +479,7 @@ pure_data:
 		&& !(pbptr->translate_type
 			&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, UTF16_UTI, &flavorFlags) != noErr)))
 		{
-			//convert to UTF-16.
+			//Convert to UTF-16.
 			otherType = CFRetain(UTF16_UTI);
 			otherEncoding = kCFStringEncodingUnicode;
 		}
@@ -529,12 +530,12 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 
 	CFDataRef data = NULL;
 	if(pbptr->type == NULL) {
-		//look for UTF-16 and convert to UTF-8.
+		//Look for UTF-16 and convert to UTF-8.
 		pbptr->type = CFRetain(UTF16_UTI);
 		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
 		if(err != noErr) {
 			err = noErr;
-			//so much for that. look for MacRoman and copy the pure bytes.
+			//So much for that. Look for MacRoman and copy the pure bytes.
 			pbptr->type = CFRetain(MacRoman_UTI);
 			goto pure_data;
 		}
@@ -543,7 +544,7 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 		data = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUTF8, /*lossByte*/ 0U);
 		CFRelease(string);
 	} else {
-		//there is an explicit type.
+		//There is an explicit type.
 pure_data:
 		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
 	}
@@ -582,7 +583,7 @@ pure_data:
 int paste(struct argblock *pbptr) {
 	int retval = 0;
 
-	UInt32 index = 0U; //index of the item to paste.
+	UInt32 index = 0U; //Index of the item to paste.
 
 	if(pbptr->argc)
 		if(index = strtoul(*(pbptr->argv), NULL, 0)) {
@@ -591,7 +592,7 @@ int paste(struct argblock *pbptr) {
 	if(pbptr->argc)
 		if(strchr(*(pbptr->argv), '.')) {
 			if(pbptr->type != NULL) {
-				//this is a filename
+				//This is a filename.
 				pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT, 0644);
 			} else {
 				//UTI
@@ -603,8 +604,8 @@ int paste(struct argblock *pbptr) {
 		if(pbptr->out_fd < 0 || pbptr->out_fd == STDOUT_FILENO)
 			pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT, 0644);
 
-	//make sure we paste into an empty file.
-	//why not truncate stdout? if we do, >> doesn't work.
+	//Make sure we paste into an empty file.
+	//Why not truncate stdout? If we do, >> doesn't work.
 	if(pbptr->out_fd != STDOUT_FILENO)
 		ftruncate(pbptr->out_fd, 0);
 
@@ -617,7 +618,7 @@ int paste(struct argblock *pbptr) {
 			fprintf(stderr, "%s: there are only %u items on pasteboard \"%s\"\n", argv0, numItems, make_pasteboardID_cstr(pbptr));
 			return 1;
 		} else {
-			//note that if we can't determine how many items there are, we forge ahead anyway.
+			//Note that if we can't determine how many items there are, we forge ahead anyway.
 			return paste_one(pbptr, index);
 		}
 	} else {
@@ -638,11 +639,11 @@ int paste(struct argblock *pbptr) {
 #if 0
 	CFDataRef data = NULL;
 	if(pbptr->type == NULL) {
-		//look for UTF-16 and convert to UTF-8.
+		//Look for UTF-16 and convert to UTF-8.
 		pbptr->type = UTF16_UTI;
 		PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
 		if(data == NULL) {
-			//so much for that. look for MacRoman and copy the pure bytes.
+			//So much for that. Look for MacRoman and copy the pure bytes.
 			pbptr->type = MacRoman_UTI;
 			goto pure_data;
 		}
@@ -651,7 +652,7 @@ int paste(struct argblock *pbptr) {
 		data = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUTF8, /*lossByte*/ 0U);
 		CFRelease(string);
 	} else {
-		//there is an explicit type.
+		//There is an explicit type.
 pure_data:
 		PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
 	}
@@ -682,7 +683,7 @@ int paste_growl(struct argblock *pbptr) {
 	fputs("paste_growl called\n", stdout);
 	int retval = 0;
 	
-	UInt32 index = 0U; //index of the item to paste.
+	UInt32 index = 0U; //Index of the item to paste.
 	
 	if(pbptr->argc)
 		if(index = strtoul(*(pbptr->argv), NULL, 0)) {
@@ -691,10 +692,10 @@ int paste_growl(struct argblock *pbptr) {
 	if(pbptr->argc)
 		if(strchr(*(pbptr->argv), '.')) {
 			if(pbptr->type != NULL) {
-				//this is a filename
+				//This is a filename.
 				pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT, 0644);
 			} else {
-				//UTI
+				//UTI.
 				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *pbptr->argv, kCFStringEncodingUTF8);
 			}
 			++(pbptr->argv); --(pbptr->argc);
@@ -702,14 +703,14 @@ int paste_growl(struct argblock *pbptr) {
 
 	OSStatus err;
 	ItemCount numItems;
-	//	printf("pasteboard: %p\n", pbptr->pasteboard);
+//	printf("pasteboard: %p\n", pbptr->pasteboard);
 	err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 	if(index) {
 		if(err == noErr && index > numItems) {
 			fprintf(stderr, "%s: there are only %u items on pasteboard \"%s\"\n", argv0, numItems, make_pasteboardID_cstr(pbptr));
 			return 1;
 		} else {
-			//note that if we can't determine how many items there are, we forge ahead anyway.
+			//Note that if we can't determine how many items there are, we forge ahead anyway.
 			return paste_one(pbptr, index);
 		}
 	} else {
@@ -734,17 +735,17 @@ int paste_growl(struct argblock *pbptr) {
 			CFStringEncoding stringEncoding = 0;
 
 			if(!desc) {
-				//first, UTF-16.
+				//First, UTF-16.
 				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, UTF16_UTI, &stringData);
 				if(err == noErr)
 					stringEncoding = kCFStringEncodingUnicode;
 				else {
-					//failing that, UTF-8.
+					//Failing that, UTF-8.
 					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, UTF8_UTI, &stringData);
 					if(err == noErr)
 						stringEncoding = kCFStringEncodingUTF8;
 					else {
-						//finally, MacRoman.
+						//Finally, MacRoman.
 						err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, MacRoman_UTI, &stringData);
 						if(err == noErr)
 							stringEncoding = kCFStringEncodingMacRoman;
@@ -752,20 +753,20 @@ int paste_growl(struct argblock *pbptr) {
 				} 
 			}
 			if(!imageData) {
-				//first, TIFF.
+				//First, TIFF.
 				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, TIFF_UTI, &imageData);
 				if(err != noErr) {
-					//failing that, PDF.
+					//Failing that, PDF.
 					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, PDF_UTI, &imageData);
 				}
 				if(err != noErr) {
-					//finally, PICT.
+					//Finally, PICT.
 					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, PICT_UTI, &imageData);
 				}
 			}
 
 			if(stringData) {
-				//create the notification description.
+				//Create the notification description.
 				desc = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, stringData, stringEncoding);
 				printf("created description %p from data %p in encoding %u\n", desc, stringData, stringEncoding);
 				CFRelease(stringData);
@@ -810,7 +811,7 @@ int paste_growl(struct argblock *pbptr) {
 		CFMutableDictionaryRef userInfo = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 		CFNotificationCenterRef dnc = CFNotificationCenterGetDistributedCenter();
 
-		//register with Growl
+		//Register with Growl.
 		CFDictionarySetValue(userInfo, GROWL_APP_NAME, CFSTR("pb"));
 		CFDictionarySetValue(userInfo, GROWL_NOTIFICATIONS_ALL, notificationNames);
 		CFDictionarySetValue(userInfo, GROWL_NOTIFICATIONS_DEFAULT, notificationNames);
@@ -819,7 +820,7 @@ int paste_growl(struct argblock *pbptr) {
 		CFDictionaryRemoveValue(userInfo, GROWL_NOTIFICATIONS_ALL);
 		CFDictionaryRemoveValue(userInfo, GROWL_NOTIFICATIONS_DEFAULT);
 
-		//post the notification
+		//Post the notification.
 		CFDictionarySetValue(userInfo, GROWL_NOTIFICATION_NAME, notificationName);
 		CFDictionarySetValue(userInfo, GROWL_NOTIFICATION_TITLE, pbptr->pasteboardID);
 		printf("desc: %p\nimageData: %p\n", desc, imageData);
@@ -881,8 +882,8 @@ int list(struct argblock *pbptr) {
 				CFStringRef flavor = CFArrayGetValueAtIndex(flavors, j);
 				const char *flavor_c = make_cstr_for_CFStr(flavor, kCFStringEncodingUTF8);
 
-				//make this next step optional! (list --verbose, maybe)
-				//if verbose...
+				//Make this next step optional! (list --verbose, maybe)
+				//If verbose...
 				CFDataRef flavorData = NULL;
 				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, flavor, &flavorData);
 
@@ -967,7 +968,7 @@ static void *pb_allocate(size_t nbytes) {
 static void pb_deallocate(void *buf) {
 	struct allocation *allocation = firstAllocation;
 	if(!allocation) {
-		//no allocations in the list - just free it
+		//No allocations in the list; just free it.
 		free(buf);
 	} else if(allocation->ptr == buf) {
 		if(allocation == lastAllocation)
