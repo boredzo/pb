@@ -139,8 +139,6 @@ int main(int argc, const char **argv) {
 		CFRelease(pb.pasteboardID);
 	if(pb.type)
 		CFRelease(pb.type);
-	if(pb.translate_type)
-		CFRelease(pb.translate_type);
 	if(pb.in_fd > 2)
 		close(pb.in_fd);
 	if(pb.out_fd > 2)
@@ -170,8 +168,7 @@ static inline void initpb(struct argblock *pbptr) {
 	pbptr->pasteboard                     = NULL;
 
 	pbptr->pasteboardID                   =
-	pbptr->type                           = 
-	pbptr->translate_type                 = NULL;
+	pbptr->type                           = NULL;
 	pbptr->pasteboardID_cstr              = NULL;
 
 	pbptr->flags.reserved                 = 0U;
@@ -189,9 +186,7 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
 				if(pbptr->flags.infer_translate_newlines)
 					pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, CFSTR("public.text"));
-			} else if(testarg(arg, "--translate-type=", &param))
-				pbptr->translate_type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
-			else if(testarg(arg, "--pasteboard=", &param)) {
+			} else if(testarg(arg, "--pasteboard=", &param)) {
 				pbptr->pasteboardID_cstr = param;
 				pbptr->pasteboardID = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
 			} else if(testarg(arg, "--in-file=", &param))
@@ -416,31 +411,6 @@ pure_data:
 
 	err = PasteboardPutItemFlavor(pbptr->pasteboard, item, pbptr->type, data, kPasteboardFlavorNoFlags);
 
-	if((err == noErr) && (pbptr->translate_type) && !UTTypeEqual(pbptr->type, pbptr->translate_type)) {
-		CFDataRef translatedData = NULL;
-		TranslationRef translator = NULL;
-		err = TranslationCreate(pbptr->type, pbptr->translate_type, kTranslationDataTranslation, &translator);
-		if(err != noErr) {
-			fprintf(stderr, "%s copy: could not create translation object for translation from \"%s\" to \"%s\": TranslationCreate returned error %li\n", argv0, make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->translate_type, kCFStringEncodingUTF8), (long)err);
-			retval = 2;
-		} else {
-			err = TranslationPerformForData(translator, data, &translatedData);
-			if(err != noErr) {
-				fprintf(stderr, "%s copy: could not translate from \"%s\" to \"%s\": TranslationPerformForData returned error %li\n", argv0, make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->translate_type, kCFStringEncodingUTF8), (long)err);
-				retval = 2;
-			} else {
-				err = PasteboardPutItemFlavor(pbptr->pasteboard, item, pbptr->translate_type, translatedData, kPasteboardFlavorSenderTranslated);
-				if(err != noErr) {
-					fprintf(stderr, "%s copy: could not copy translated \"%s\" data: PasteboardPutItemFlavor returned error %li\n", argv0, make_cstr_for_CFStr(pbptr->translate_type, kCFStringEncodingUTF8), (long)err);
-					retval = 2;
-				}
-				CFRelease(translatedData);
-			}
-			CFRelease(translator);
-		}
-		err = noErr;
-	} //End of translation code.
-
 	if(!string) {
 		//If --type was specified, there's no string form yet.
 		//We need to create one to do translation.
@@ -468,16 +438,14 @@ pure_data:
 		PasteboardFlavorFlags flavorFlags;
 		
 		if(UTTypeConformsTo(pbptr->type, UTF16_UTI)
-		&& !(pbptr->translate_type
-			&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, MacRoman_UTI, &flavorFlags) != noErr)))
+		&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, MacRoman_UTI, &flavorFlags) != noErr))
 		{
 			//Convert to MacRoman.
 			otherType = CFRetain(MacRoman_UTI);
 			otherEncoding = kCFStringEncodingMacRoman;
 		} else
 		if(UTTypeConformsTo(pbptr->type, MacRoman_UTI)
-		&& !(pbptr->translate_type
-			&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, UTF16_UTI, &flavorFlags) != noErr)))
+		&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, UTF16_UTI, &flavorFlags) != noErr))
 		{
 			//Convert to UTF-16.
 			otherType = CFRetain(UTF16_UTI);
