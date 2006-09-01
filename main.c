@@ -10,6 +10,8 @@
  *	- Add --file in copy and paste subcmds
  *	- Add multicopy subcmd: multicopy [options] filename [options] filename …
  *	- Collapse in_fd, out_fd to one FD.
+ *	- Hook up convert_encodings.
+ *	- Make convert_encodings capable of handling UTF-16 (external representation).
  */
 
 struct argblock {
@@ -44,6 +46,10 @@ struct argblock {
 static void *pb_allocate  (size_t nbytes);
 static void  pb_deallocate(void *buf);
 static void  pb_deallocateall(void);
+
+//Note: Any created data objects are implicitly retained (Create/Copy rule).
+//Data objects passed in are not implicitly retained.
+static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF8Data, CFDataRef *inoutMacRomanData);
 
 static inline void initpb(struct argblock *pbptr);
 static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding);
@@ -967,4 +973,146 @@ static void pb_deallocateall(void) {
 		free(allocation);
 		allocation = nextAllocation;
 	}
+}
+
+static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF8Data, CFDataRef *inoutMacRomanData) {
+	Boolean success_UTF16 = false, success_UTF8 = false, success_MacRoman = false;
+
+	//Convert UTF-8 or MacRoman to UTF-16.
+	if(inoutUTF16Data && !*inoutUTF16Data) {
+		CFStringRef string = NULL;
+		if(inoutUTF8Data && *inoutUTF8Data) {
+			string = CFStringCreateWithBytes(kCFAllocatorDefault,
+			                                 CFDataGetBytePtr(*inoutUTF8Data),
+			                                 CFDataGetLength(*inoutUTF8Data),
+			                                 kCFStringEncodingUTF8,
+			                                 NO);
+		} else if(inoutMacRomanData && *inoutMacRomanData) {
+			string = CFStringCreateWithBytes(kCFAllocatorDefault,
+			                                 CFDataGetBytePtr(*inoutMacRomanData),
+			                                 CFDataGetLength(*inoutMacRomanData),
+			                                 kCFStringEncodingMacRoman,
+			                                 NO);
+		}
+
+		if(string) {
+			CFRange range = { 0, CFStringGetLength(string) };
+			CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, range.length * sizeof(UniChar));
+			if(mutableData) {
+				CFStringGetCharacters(string, range, CFDataGetMutableBytePtr(mutableData));
+				*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
+				CFRelease(mutableData);
+				 */
+				success_UTF16 = true;
+			}
+
+			CFRelease(string);
+		}
+	}
+
+	//Convert UTF-16 or MacRoman to UTF-8.
+	if(!inoutUTF8Data) {
+		CFStringRef string = NULL;
+		if(inoutUTF16Data && *inoutUTF16Data) {
+			string = CFStringCreateWithCharacters(kCFAllocatorDefault,
+			                                      CFDataGetBytePtr(*inoutUTF16Data),
+			                                      CFDataGetLength(*inoutUTF16Data));
+		} else if(inoutMacRomanData && *inoutMacRomanData) {
+			string = CFStringCreateWithBytes(kCFAllocatorDefault,
+			                                 CFDataGetBytePtr(*inoutMacRomanData),
+			                                 CFDataGetLength(*inoutMacRomanData),
+			                                 kCFStringEncodingMacRoman,
+			                                 NO);
+		}
+
+		if(string) {
+			CFRange range = { 0, CFStringGetLength(string) };
+			CFIndex numBytes = 0;
+			CFIndex maxBytes = CFStringGetMaximumSizeForEncoding(range.length, kCFStringEncodingUTF8);
+
+			CFIndex numCharsConverted = CFStringGetBytes(string,
+			                                             range,
+			                                             kCFStringEncodingUTF8,
+			                                             /*lossByte*/ 0U,
+			                                             /*isExternalRepresentation*/ NO,
+			                                             /*buffer*/ NULL,
+			                                             /*maxBufLen*/ maxBytes,
+			                                             &numBytes);
+			if(numCharsConverted) {
+				CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, numBytes);
+				if(mutableData) {
+					numCharsConverted = CFStringGetBytes(string,
+					                                     range,
+					                                     kCFStringEncodingUTF8,
+					                                     /*lossByte*/ 0U,
+					                                     /*isExternalRepresentation*/ NO,
+					                                     CFDataGetMutableBytePtr(mutableData),
+					                                     /*maxBufLen*/ numBytes,
+					                                     &numBytes);
+					CFDataSetLength(mutableData, numBytes);
+					CFStringGetCharacters(string, range, CFDataGetMutableBytePtr(mutableData));
+					*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
+					CFRelease(mutableData);
+				 	 */
+					success_UTF8 = true;
+				}
+			}
+
+			CFRelease(string);
+		}
+	}
+
+	//Convert UTF-16 or UTF-8 to MacRoman.
+	if(!inoutMacRomanData) {
+		CFStringRef string = NULL;
+		if(inoutUTF16Data && *inoutUTF16Data) {
+			string = CFStringCreateWithCharacters(kCFAllocatorDefault,
+			                                      CFDataGetBytePtr(*inoutUTF16Data),
+			                                      CFDataGetLength(*inoutUTF16Data));
+		} else if(inoutUTF8Data && *inoutUTF8Data) {
+			string = CFStringCreateWithBytes(kCFAllocatorDefault,
+			                                 CFDataGetBytePtr(*inoutUTF8Data),
+			                                 CFDataGetLength(*inoutUTF8Data),
+			                                 kCFStringEncodingUTF8,
+			                                 NO);
+		}
+
+		if(string) {
+			CFRange range = { 0, CFStringGetLength(string) };
+			CFIndex numBytes = 0;
+			CFIndex maxBytes = CFStringGetMaximumSizeForEncoding(range.length, kCFStringEncodingUTF8);
+
+			CFIndex numCharsConverted = CFStringGetBytes(string,
+			                                             range,
+			                                             kCFStringEncodingMacRoman,
+			                                             /*lossByte*/ 0U,
+			                                             /*isExternalRepresentation*/ NO,
+			                                             /*buffer*/ NULL,
+			                                             /*maxBufLen*/ maxBytes,
+			                                             &numBytes);
+			if(numCharsConverted) {
+				CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, numBytes);
+				if(mutableData) {
+					numCharsConverted = CFStringGetBytes(string,
+					                                     range,
+					                                     kCFStringEncodingMacRoman,
+					                                     /*lossByte*/ 0U,
+					                                     /*isExternalRepresentation*/ NO,
+					                                     CFDataGetMutableBytePtr(mutableData),
+					                                     /*maxBufLen*/ numBytes,
+					                                     &numBytes);
+					CFDataSetLength(mutableData, numBytes);
+					CFStringGetCharacters(string, range, CFDataGetMutableBytePtr(mutableData));
+					*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
+					CFRelease(mutableData);
+				 	 */
+					success_MacRoman = true;
+				}
+			}
+
+			CFRelease(string);
+		}
+	}
+
+	return success_UTF16 && success_UTF8 && success_MacRoman;
 }
