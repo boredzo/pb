@@ -25,7 +25,7 @@ struct argblock {
 	CFStringRef pasteboardID;
 	const char *pasteboardID_cstr;
 
-	CFStringRef type, translate_type; //UTIs
+	CFStringRef type; //UTI
 
 	struct {
 		unsigned reserved: 26;
@@ -82,6 +82,7 @@ static const unsigned char nl_translate_table[256] =
 "\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff";
 
 static CFStringRef UTF16_UTI = CFSTR("public.utf16-plain-text");
+static CFStringRef UTF8_UTI = CFSTR("public.utf8-plain-text");
 static CFStringRef MacRoman_UTI = CFSTR("com.apple.traditional-mac-plain-text");
 static CFStringRef TIFF_UTI = CFSTR("public.tiff");
 static CFStringRef PDF_UTI = CFSTR("com.adobe.pdf");
@@ -120,7 +121,7 @@ int main(int argc, const char **argv) {
 //			fprintf(stderr, "%s: you must supply a subcommand (copy, paste, or clear)\n", argv0);
 //			retval = 1;
 			if(!pb.type)
-				pb.type = CFRetain(MacRoman_UTI);
+				pb.type = CFRetain(UTF8_UTI);
 			if(!isatty(pb.in_fd))
 				retval = copy(&pb);
 			//paste when...
@@ -402,8 +403,15 @@ pure_data:
 			fprintf(stderr, "%s copy: could not create CFData object for copy to pasteboard %s\n", argv0, make_pasteboardID_cstr(pbptr));
 			return 2;
 		}
-		if(UTTypeConformsTo(pbptr->type, MacRoman_UTI))
+
+		if(UTTypeConformsTo(pbptr->type, UTF16_UTI))
+			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUnicode);
+		else if(UTTypeConformsTo(pbptr->type, UTF8_UTI))
+			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUTF8);
+		else if(UTTypeConformsTo(pbptr->type, MacRoman_UTI))
 			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingMacRoman);
+		else 
+			string = NULL;
 	}
 
 	err = PasteboardPutItemFlavor(pbptr->pasteboard, item, pbptr->type, data, kPasteboardFlavorNoFlags);
@@ -441,6 +449,8 @@ pure_data:
 
 		if(UTTypeConformsTo(pbptr->type, UTF16_UTI))
 			encoding = kCFStringEncodingUnicode;
+		if(UTTypeConformsTo(pbptr->type, UTF8_UTI))
+			encoding = kCFStringEncodingUTF8;
 		else if(UTTypeConformsTo(pbptr->type, MacRoman_UTI))
 			encoding = kCFStringEncodingMacRoman;
 
@@ -730,10 +740,16 @@ int paste_growl(struct argblock *pbptr) {
 				if(err == noErr)
 					stringEncoding = kCFStringEncodingUnicode;
 				else {
-					//failing that, MacRoman.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, MacRoman_UTI, &stringData);
+					//failing that, UTF-8.
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, UTF8_UTI, &stringData);
 					if(err == noErr)
-						stringEncoding = kCFStringEncodingMacRoman;
+						stringEncoding = kCFStringEncodingUTF8;
+					else {
+						//finally, MacRoman.
+						err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, MacRoman_UTI, &stringData);
+						if(err == noErr)
+							stringEncoding = kCFStringEncodingMacRoman;
+					}
 				} 
 			}
 			if(!imageData) {
