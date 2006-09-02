@@ -400,12 +400,16 @@ pure_data:
 			return 2;
 		}
 
-		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText))
+		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText)) {
+			string = CFStringCreateWithCharactersNoCopy(kCFAllocatorDefault, CFDataGetBytePtr(data), CFDataGetLength(data), kCFAllocatorNull);
+			if(!string)
+				string = CFStringCreateWithCharacters(kCFAllocatorDefault, CFDataGetBytePtr(data), CFDataGetLength(data));
+		} else if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16ExternalPlainText))
 			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUnicode);
 		else if(UTTypeConformsTo(pbptr->type, kUTTypeUTF8PlainText))
-			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUTF8);
+			string = CFStringCreateWithBytes(kCFAllocatorDefault, CFDataGetBytePtr(data), CFDataGetLength(data), kCFStringEncodingUTF8, NO);
 		else if(UTTypeConformsTo(pbptr->type, MacRoman_UTI))
-			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingMacRoman);
+			string = CFStringCreateWithBytes(kCFAllocatorDefault, CFDataGetBytePtr(data), CFDataGetLength(data), kCFStringEncodingMacRoman, NO);
 		else 
 			string = NULL;
 	}
