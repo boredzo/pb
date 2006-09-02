@@ -88,13 +88,7 @@ static const unsigned char nl_translate_table[256] =
 "\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef"
 "\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff";
 
-static CFStringRef UTF16_UTI = CFSTR("public.utf16-plain-text");
-static CFStringRef UTF16Ext_UTI = CFSTR("public.utf16-external-plain-text");
-static CFStringRef UTF8_UTI = CFSTR("public.utf8-plain-text");
 static CFStringRef MacRoman_UTI = CFSTR("com.apple.traditional-mac-plain-text");
-static CFStringRef TIFF_UTI = CFSTR("public.tiff");
-static CFStringRef PDF_UTI = CFSTR("com.adobe.pdf");
-static CFStringRef PICT_UTI = CFSTR("com.apple.pict");
 
 int main(int argc, const char **argv) {
 	argv0 = argv[0];
@@ -129,7 +123,7 @@ int main(int argc, const char **argv) {
 //			fprintf(stderr, "%s: you must supply a subcommand (copy, paste, or clear)\n", argv0);
 //			retval = 1;
 			if(!pb.type)
-				pb.type = CFRetain(UTF8_UTI);
+				pb.type = CFRetain(kUTTypeUTF8PlainText);
 			if(!isatty(pb.in_fd))
 				retval = copy(&pb);
 			//Paste when...
@@ -396,7 +390,7 @@ int copy(struct argblock *pbptr) {
 			goto pure_data;
 		}
 		data = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUnicode, /*lossByte*/ 0U);
-		pbptr->type = CFRetain(UTF16_UTI);
+		pbptr->type = CFRetain(kUTTypeUTF16PlainText);
 	} else {
 pure_data:
 		data = CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, (const unsigned char *)buf, total_size, /*bytesDeallocator*/ kCFAllocatorNull);
@@ -407,9 +401,9 @@ pure_data:
 			return 2;
 		}
 
-		if(UTTypeConformsTo(pbptr->type, UTF16_UTI))
+		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText))
 			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUnicode);
-		else if(UTTypeConformsTo(pbptr->type, UTF8_UTI))
+		else if(UTTypeConformsTo(pbptr->type, kUTTypeUTF8PlainText))
 			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUTF8);
 		else if(UTTypeConformsTo(pbptr->type, MacRoman_UTI))
 			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingMacRoman);
@@ -425,9 +419,9 @@ pure_data:
 
 		CFStringEncoding encoding = 0;
 
-		if(UTTypeConformsTo(pbptr->type, UTF16_UTI))
+		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText))
 			encoding = kCFStringEncodingUnicode;
-		if(UTTypeConformsTo(pbptr->type, UTF8_UTI))
+		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF8PlainText))
 			encoding = kCFStringEncodingUTF8;
 		else if(UTTypeConformsTo(pbptr->type, MacRoman_UTI))
 			encoding = kCFStringEncodingMacRoman;
@@ -445,7 +439,7 @@ pure_data:
 
 		PasteboardFlavorFlags flavorFlags;
 		
-		if(UTTypeConformsTo(pbptr->type, UTF16_UTI)
+		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText)
 		&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, MacRoman_UTI, &flavorFlags) != noErr))
 		{
 			//Convert to MacRoman.
@@ -453,10 +447,10 @@ pure_data:
 			otherEncoding = kCFStringEncodingMacRoman;
 		} else
 		if(UTTypeConformsTo(pbptr->type, MacRoman_UTI)
-		&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, UTF16_UTI, &flavorFlags) != noErr))
+		&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, kUTTypeUTF16PlainText, &flavorFlags) != noErr))
 		{
 			//Convert to UTF-16.
-			otherType = CFRetain(UTF16_UTI);
+			otherType = CFRetain(kUTTypeUTF16PlainText);
 			otherEncoding = kCFStringEncodingUnicode;
 		}
 
@@ -507,7 +501,7 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 	CFDataRef data = NULL;
 	if(pbptr->type == NULL) {
 		//Look for UTF-16 and convert to UTF-8.
-		pbptr->type = CFRetain(UTF16_UTI);
+		pbptr->type = CFRetain(kUTTypeUTF16PlainText);
 		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
 		if(err != noErr) {
 			err = noErr;
@@ -616,7 +610,7 @@ int paste(struct argblock *pbptr) {
 	CFDataRef data = NULL;
 	if(pbptr->type == NULL) {
 		//Look for UTF-16 and convert to UTF-8.
-		pbptr->type = UTF16_UTI;
+		pbptr->type = kUTTypeUTF16PlainText;
 		PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
 		if(data == NULL) {
 			//So much for that. Look for MacRoman and copy the pure bytes.
@@ -712,12 +706,12 @@ int paste_growl(struct argblock *pbptr) {
 
 			if(!desc) {
 				//First, UTF-16.
-				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, UTF16_UTI, &stringData);
+				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF16PlainText, &stringData);
 				if(err == noErr)
 					stringEncoding = kCFStringEncodingUnicode;
 				else {
 					//Failing that, UTF-8.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, UTF8_UTI, &stringData);
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF8PlainText, &stringData);
 					if(err == noErr)
 						stringEncoding = kCFStringEncodingUTF8;
 					else {
@@ -729,15 +723,32 @@ int paste_growl(struct argblock *pbptr) {
 				} 
 			}
 			if(!imageData) {
-				//First, TIFF.
-				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, TIFF_UTI, &imageData);
+				//First, vector formats, since they work well at any size.
+
+				//First, PDF.
+				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypePDF, &imageData);
 				if(err != noErr) {
-					//Failing that, PDF.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, PDF_UTI, &imageData);
+					//Failing that, PICT.
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypePICT, &imageData);
+				}
+
+				//OK, that won't work. Try raster formats now.
+
+				//First, IconFamily.
+				if(err != noErr) {
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeAppleICNS, &imageData);
 				}
 				if(err != noErr) {
-					//Finally, PICT.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, PICT_UTI, &imageData);
+					//Failing that, TIFF.
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeTIFF, &imageData);
+				}
+				if(err != noErr) {
+					//Failing that, QuickTime image.
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeQuickTimeImage, &imageData);
+				}
+				if(err != noErr) {
+					//Failing that, PNG.
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypePNG, &imageData);
 				}
 			}
 
