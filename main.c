@@ -1089,37 +1089,8 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 		}
 
 		if(string) {
-			CFRange range = { 0, CFStringGetLength(string) };
-			CFIndex numBytes = 0;
-			CFIndex maxBytes = CFStringGetMaximumSizeForEncoding(range.length, kCFStringEncodingUTF8);
-
-			CFIndex numCharsConverted = CFStringGetBytes(string,
-			                                             range,
-			                                             kCFStringEncodingUnicode,
-			                                             /*lossByte*/ 0U,
-			                                             /*isExternalRepresentation*/ YES,
-			                                             /*buffer*/ NULL,
-			                                             /*maxBufLen*/ maxBytes,
-			                                             &numBytes);
-			if(numCharsConverted) {
-				CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, numBytes);
-				if(mutableData) {
-					numCharsConverted = CFStringGetBytes(string,
-					                                     range,
-					                                     kCFStringEncodingUnicode,
-					                                     /*lossByte*/ 0U,
-					                                     /*isExternalRepresentation*/ YES,
-					                                     CFDataGetMutableBytePtr(mutableData),
-					                                     /*maxBufLen*/ numBytes,
-					                                     &numBytes);
-					CFDataSetLength(mutableData, numBytes);
-					CFStringGetCharacters(string, range, CFDataGetMutableBytePtr(mutableData));
-					*inoutUTF16ExtData = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
-					CFRelease(mutableData);
-				 	 */
-					success_UTF16Ext = true;
-				}
-			}
+			*inoutUTF16ExtData = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUnicode);
+			success_UTF16Ext = true;
 
 			CFRelease(string);
 		}
