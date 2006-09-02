@@ -11,7 +11,6 @@
  *	- Add multicopy subcmd: multicopy [options] filename [options] filename …
  *	- Collapse in_fd, out_fd to one FD.
  *	- Hook up convert_encodings.
- *	- Make convert_encodings capable of handling UTF-16 (external representation).
  */
 
 struct argblock {
