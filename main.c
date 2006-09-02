@@ -1063,6 +1063,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 
 		if(string) {
 			*inoutUTF16Data = createCFDataFromCFString(string);
+			success_UTF16 = (*inoutUTF16Data != NULL);
 			CFRelease(string);
 		}
 	}
@@ -1090,7 +1091,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 
 		if(string) {
 			*inoutUTF16ExtData = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUnicode);
-			success_UTF16Ext = true;
+			success_UTF16Ext = (*inoutUTF16ExtData != NULL);
 
 			CFRelease(string);
 		}
@@ -1146,7 +1147,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
 				 	 */
-					success_UTF8 = true;
+					success_UTF8 = (*inoutUTF8Data != NULL);
 				}
 			}
 
@@ -1204,7 +1205,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
 				 	 */
-					success_MacRoman = true;
+					success_MacRoman = (*inoutMacRomanData != NULL);
 				}
 			}
 
