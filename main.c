@@ -688,40 +688,29 @@ int paste_growl(struct argblock *pbptr) {
 				}
 			}
 
-			if(stringData) {
-				//Create the notification description.
-				desc = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, stringData, stringEncoding);
-				printf("created description %p from data %p in encoding %u\n", desc, stringData, stringEncoding);
-				CFRelease(stringData);
-			}
-
-#if 0
 			if(err != noErr) {
 				fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
 				retval = 2;
-			} else {
-				CFIndex length = CFDataGetLength(data);
-				const unsigned char *rptr = CFDataGetBytePtr(data);
-				void *buf = NULL;
+			} else if(stringData) {
 				if(pbptr->flags.translate_newlines) {
-					buf = malloc(length);
-					unsigned char *wptr = buf;
-					
-					for(unsigned long long i = 0ULL; i < length; ++i)
-						*(wptr++) = nl_translate_table[*(rptr++)];
-					
-					rptr = buf;
+					CFIndex length = CFDataGetLength(stringData);
+					CFMutableDataRef mutableStringData = CFDataCreateMutableCopy(kCFAllocatorDefault, length, stringData);
+					unsigned char *ptr = CFDataGetMutableBytePtr(mutableStringData);
+
+					for(CFIndex i = 0LL; i < length; ++i)
+						*(ptr++) = nl_translate_table[*(ptr++)];
+
+					CFRelease(stringData);
+					stringData = mutableStringData;
 				}
-				
-				write(pbptr->out_fd, rptr, length);
-				
-				if(buf)
-					free(buf);
+
+				if(stringData) {
+					//Create the notification description.
+					desc = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, stringData, stringEncoding);
+					printf("created description %p from data %p in encoding %u\n", desc, stringData, stringEncoding);
+					CFRelease(stringData);
+				}
 			}
-			
-			if(data)
-				CFRelease(data);
-#endif
 
 			if(retval) {
 				fprintf(stderr, "%s: error pasting item %u from pasteboard \"%s\"\n", argv0, index, make_pasteboardID_cstr(pbptr));
