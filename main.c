@@ -490,19 +490,27 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 
 	CFDataRef data = NULL;
 	if(pbptr->type == NULL) {
-		//Look for UTF-16 and convert to UTF-8.
-		pbptr->type = CFRetain(kUTTypeUTF16PlainText);
-		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
-		if(err != noErr) {
-			err = noErr;
-			//So much for that. Look for MacRoman and copy the pure bytes.
-			pbptr->type = CFRetain(MacRoman_UTI);
-			goto pure_data;
+		CFDataRef UTF8Data = NULL;
+		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF8PlainText, &UTF8Data);
+		if(UTF8Data)
+			pbptr->type = CFRetain(kUTTypeUTF8PlainText);
+		else {
+			//Look for UTF-16, then UTF-16 with BOM, then MacRoman. Convert the first of those that we find (if any) to UTF-8.
+			CFDataRef UTF16Data = NULL, UTF16ExtData = NULL, MacRomanData = NULL;
+			err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF16PlainText, &UTF16Data);
+			if(!UTF16Data)
+				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF16ExtPlainText, &UTF16ExtData);
+			if(!UTF16ExtData)
+				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeMacRomanPlainText, &MacRomanData);
+			//If we have anything, convert it to UTF-8.
+			if(UTF16Data || UTF16ExtData || MacRomanData) {
+				convert_encodings(UTF16Data ? &UTF16Data : NULL,
+			                  	  UTF16ExtData ? &UTF16ExtData : NULL,
+			                  	  &UTF8Data,
+			                  	  MacRomanData ? &MacRomanData : NULL);
+				data = UTF8Data;
+			}
 		}
-		CFStringRef string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUnicode);
-		CFRelease(data);
-		data = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUTF8, /*lossByte*/ 0U);
-		CFRelease(string);
 	} else {
 		//There is an explicit type.
 pure_data:
