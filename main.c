@@ -993,11 +993,9 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 		if(!string) {
 			if(inoutUTF16ExtData && *inoutUTF16ExtData) {
 				fprintf(stderr, "Creating string for UTF-16 from UTF-16 external\n");
-				string = CFStringCreateWithBytes(kCFAllocatorDefault,
-			                                 	 CFDataGetBytePtr(*inoutUTF16ExtData),
-			                                 	 CFDataGetLength(*inoutUTF16ExtData) / sizeof(UniChar),
-			                                 	 kCFStringEncodingUnicode,
-			                                 	 true);
+				string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault,
+			                                 	 	 	 		  *inoutUTF16ExtData,
+			                                 	 	 	 		  kCFStringEncodingUnicode);
 			} else if(inoutUTF8Data && *inoutUTF8Data) {
 				fprintf(stderr, "Creating string for UTF-16 from UTF-8\n");
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
@@ -1057,11 +1055,9 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			                                      	  (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
 			                                      	  CFDataGetLength(*inoutUTF16Data) / sizeof(UniChar));
 			} else if(inoutUTF16ExtData && *inoutUTF16ExtData) {
-				string = CFStringCreateWithBytes(kCFAllocatorDefault,
-			                                 	 CFDataGetBytePtr(*inoutUTF16ExtData),
-			                                 	 CFDataGetLength(*inoutUTF16ExtData) / sizeof(UniChar),
-			                                 	 kCFStringEncodingUnicode,
-			                                 	 true);
+				string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault,
+			                                 	 	 	 		  *inoutUTF16ExtData,
+			                                 	 	 	 		  kCFStringEncodingUnicode);
 			} else if(inoutMacRomanData && *inoutMacRomanData) {
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutMacRomanData),
@@ -1114,11 +1110,9 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			                                      	  (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
 			                                      	  CFDataGetLength(*inoutUTF16Data) / sizeof(UniChar));
 			} else if(inoutUTF16ExtData && *inoutUTF16ExtData) {
-				string = CFStringCreateWithBytes(kCFAllocatorDefault,
-			                                 	 CFDataGetBytePtr(*inoutUTF16ExtData),
-			                                 	 CFDataGetLength(*inoutUTF16ExtData) / sizeof(UniChar),
-			                                 	 kCFStringEncodingUnicode,
-			                                 	 true);
+				string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault,
+			                                 	 	 	 		  *inoutUTF16ExtData,
+			                                 	 	 	 		  kCFStringEncodingUnicode);
 			} else if(inoutUTF8Data && *inoutUTF8Data) {
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutUTF8Data),
