@@ -468,7 +468,6 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 	}
 
 	CFDataRef data = NULL;
-	fprintf(stderr, "%s: Pasting item %u of pasteboard \"%s\" in flavor type \"%s\".\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
 	if(pbptr->type == NULL) {
 		CFDataRef UTF8Data = NULL;
 		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF8PlainText, &UTF8Data);
