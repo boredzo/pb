@@ -992,19 +992,16 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 	if(inoutUTF16Data && !*inoutUTF16Data) {
 		if(!string) {
 			if(inoutUTF16ExtData && *inoutUTF16ExtData) {
-				fprintf(stderr, "Creating string for UTF-16 from UTF-16 external\n");
 				string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault,
 			                                 	 	 	 		  *inoutUTF16ExtData,
 			                                 	 	 	 		  kCFStringEncodingUnicode);
 			} else if(inoutUTF8Data && *inoutUTF8Data) {
-				fprintf(stderr, "Creating string for UTF-16 from UTF-8\n");
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutUTF8Data),
 			                                 	 CFDataGetLength(*inoutUTF8Data),
 			                                 	 kCFStringEncodingUTF8,
 			                                 	 false);
 			} else if(inoutMacRomanData && *inoutMacRomanData) {
-				fprintf(stderr, "Creating string for UTF-16 from MacRoman\n");
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutMacRomanData),
 			                                 	 CFDataGetLength(*inoutMacRomanData),
@@ -1167,7 +1164,6 @@ static CFDataRef createCFDataFromCFString(CFStringRef string) {
 
 	if(string) {
 		CFRange range = { 0, CFStringGetLength(string) };
-		fprintf(stderr, "String length: %lli\n", (long long)range.length);
 		CFIndex dataSize = range.length * sizeof(UniChar);
 		CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, dataSize);
 		if(mutableData) {
@@ -1176,7 +1172,6 @@ static CFDataRef createCFDataFromCFString(CFStringRef string) {
 			data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 			CFRelease(mutableData);
 			 */
-			fprintf(stderr, "Data length: %lli\n", (long long)CFDataGetLength(mutableData));
 		}
 	}
 
