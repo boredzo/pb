@@ -477,9 +477,9 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 			CFDataRef UTF16Data = NULL, UTF16ExtData = NULL, MacRomanData = NULL;
 			err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF16PlainText, &UTF16Data);
 			if(!UTF16Data)
-				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF16ExtPlainText, &UTF16ExtData);
+				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF16ExternalPlainText, &UTF16ExtData);
 			if(!UTF16ExtData)
-				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeMacRomanPlainText, &MacRomanData);
+				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, MacRoman_UTI, &MacRomanData);
 			//If we have anything, convert it to UTF-8.
 			if(UTF16Data || UTF16ExtData || MacRomanData) {
 				convert_encodings(UTF16Data ? &UTF16Data : NULL,
