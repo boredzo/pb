@@ -995,7 +995,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 				fprintf(stderr, "Creating string for UTF-16 from UTF-16 external\n");
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutUTF16ExtData),
-			                                 	 CFDataGetLength(*inoutUTF16ExtData),
+			                                 	 CFDataGetLength(*inoutUTF16ExtData) / sizeof(UniChar),
 			                                 	 kCFStringEncodingUnicode,
 			                                 	 true);
 			} else if(inoutUTF8Data && *inoutUTF8Data) {
@@ -1027,7 +1027,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			if(inoutUTF16Data && *inoutUTF16Data) {
 				string = CFStringCreateWithCharacters(kCFAllocatorDefault,
 			                                      	  (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
-			                                      	  CFDataGetLength(*inoutUTF16Data));
+			                                      	  CFDataGetLength(*inoutUTF16Data) / sizeof(UniChar));
 			} else if(inoutUTF8Data && *inoutUTF8Data) {
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutUTF8Data),
@@ -1055,11 +1055,11 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			if(inoutUTF16Data && *inoutUTF16Data) {
 				string = CFStringCreateWithCharacters(kCFAllocatorDefault,
 			                                      	  (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
-			                                      	  CFDataGetLength(*inoutUTF16Data));
+			                                      	  CFDataGetLength(*inoutUTF16Data) / sizeof(UniChar));
 			} else if(inoutUTF16ExtData && *inoutUTF16ExtData) {
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutUTF16ExtData),
-			                                 	 CFDataGetLength(*inoutUTF16ExtData),
+			                                 	 CFDataGetLength(*inoutUTF16ExtData) / sizeof(UniChar),
 			                                 	 kCFStringEncodingUnicode,
 			                                 	 true);
 			} else if(inoutMacRomanData && *inoutMacRomanData) {
@@ -1112,11 +1112,11 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			if(inoutUTF16Data && *inoutUTF16Data) {
 				string = CFStringCreateWithCharacters(kCFAllocatorDefault,
 			                                      	  (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
-			                                      	  CFDataGetLength(*inoutUTF16Data));
+			                                      	  CFDataGetLength(*inoutUTF16Data) / sizeof(UniChar));
 			} else if(inoutUTF16ExtData && *inoutUTF16ExtData) {
 				string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 	 CFDataGetBytePtr(*inoutUTF16ExtData),
-			                                 	 CFDataGetLength(*inoutUTF16ExtData),
+			                                 	 CFDataGetLength(*inoutUTF16ExtData) / sizeof(UniChar),
 			                                 	 kCFStringEncodingUnicode,
 			                                 	 true);
 			} else if(inoutUTF8Data && *inoutUTF8Data) {
