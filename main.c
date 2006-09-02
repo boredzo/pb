@@ -468,6 +468,7 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 	}
 
 	CFDataRef data = NULL;
+	fprintf(stderr, "%s: Pasting item %u of pasteboard \"%s\" in flavor type \"%s\".\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
 	if(pbptr->type == NULL) {
 		CFDataRef UTF8Data = NULL;
 		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF8PlainText, &UTF8Data);
@@ -527,7 +528,8 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 	}
 
 	if(data)
-		CFRelease(data);
+		fprintf(stderr, "data's retain count: %lli\n", (long long)CFGetRetainCount(data));
+//		CFRelease(data);
 
 	return retval;
 }
@@ -1028,7 +1030,6 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					                                     CFDataGetMutableBytePtr(mutableData),
 					                                     /*maxBufLen*/ numBytes,
 					                                     &numBytes);
-					CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
 					*inoutUTF8Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
 				 	 */
