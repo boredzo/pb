@@ -257,17 +257,20 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 #pragma mark -
 
 static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding) {
-	const char *result = CFStringGetCStringPtr(in, encoding);
-	if(result == NULL) {
-		CFRange IDrange = CFRangeMake(0, CFStringGetLength(in));
-		CFIndex numBytes = 0;
-		CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, /*buffer*/ NULL, /*maxBufLen*/ 0, &numBytes);
-		char *buf = pb_allocate(numBytes + 1U);
-		if(buf) {
-			CFIndex numChars = CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, (unsigned char *)buf, /*maxBufLen*/ numBytes, &numBytes);
-			buf[numBytes] = 0;
+	const char *result = NULL;
+	if(in) {
+		result = CFStringGetCStringPtr(in, encoding);
+		if(result == NULL) {
+			CFRange IDrange = CFRangeMake(0, CFStringGetLength(in));
+			CFIndex numBytes = 0;
+			CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, /*buffer*/ NULL, /*maxBufLen*/ 0, &numBytes);
+			char *buf = pb_allocate(numBytes + 1U);
+			if(buf) {
+				CFIndex numChars = CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, (unsigned char *)buf, /*maxBufLen*/ numBytes, &numBytes);
+				buf[numBytes] = 0;
+			}
+			result = buf;
 		}
-		result = buf;
 	}
 	return result;
 }
