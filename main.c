@@ -252,28 +252,6 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 		case subcommand_options:
 			pbptr->flags.has_args = true;
 			break;
-
-#if 0
-			int *fd;
-			const char *err_format;
-			if(pbptr->proc == copy) {
-				fd = &(pbptr->in_fd);
-				err_format = "%s: warning: input file '%s' overrides --in-file\n";
-			} else if(pbptr->proc == paste) {
-				fd = &(pbptr->out_fd);
-				err_format = "%s: warning: output file '%s' overrides --out-file\n";
-			} else {
-				fprintf(stderr, "%s: no options for this subcommand\n", argv0);
-				break;
-			}
-
-			if(*fd > -1) {
-				fprintf(stderr, err_format, argv0, arg);
-				close(*fd);
-			}
-			*fd = open(param, O_RDONLY, 0644);
-			break;
-#endif
 	} //switch(pbptr->flags.phase)
 	return 0;
 }
@@ -509,6 +487,7 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 			                  	  &UTF8Data,
 			                  	  MacRomanData ? &MacRomanData : NULL);
 				data = UTF8Data;
+				pbptr->type = CFRetain(kUTTypeUTF8PlainText);
 			}
 		}
 	} else {
@@ -603,47 +582,6 @@ int paste(struct argblock *pbptr) {
 			}
 		}
 	}
-
-#if 0
-	CFDataRef data = NULL;
-	if(pbptr->type == NULL) {
-		//Look for UTF-16 and convert to UTF-8.
-		pbptr->type = kUTTypeUTF16PlainText;
-		PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
-		if(data == NULL) {
-			//So much for that. Look for MacRoman and copy the pure bytes.
-			pbptr->type = MacRoman_UTI;
-			goto pure_data;
-		}
-		CFStringRef string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, kCFStringEncodingUnicode);
-		CFRelease(data);
-		data = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUTF8, /*lossByte*/ 0U);
-		CFRelease(string);
-	} else {
-		//There is an explicit type.
-pure_data:
-		PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
-	}
-
-	CFIndex length = CFDataGetLength(data);
-	const unsigned char *rptr = CFDataGetBytePtr(data);
-	void *buf = NULL;
-	if(pbptr->flags.translate_newlines) {
-		buf = malloc(length);
-		unsigned char *wptr = buf;
-
-		for(unsigned long long i = 0ULL; i < length; ++i)
-			*(wptr++) = nl_translate_table[*(rptr++)];
-
-		rptr = buf;
-	}
-
-	write(pbptr->out_fd, rptr, length);
-
-	if(buf)
-		free(buf);
-	CFRelease(data);
-#endif //0
 
 	return retval;
 }
