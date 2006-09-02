@@ -528,8 +528,7 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 	}
 
 	if(data)
-		fprintf(stderr, "data's retain count: %lli\n", (long long)CFGetRetainCount(data));
-//		CFRelease(data);
+		CFRelease(data);
 
 	return retval;
 }
