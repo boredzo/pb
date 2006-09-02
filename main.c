@@ -123,8 +123,6 @@ int main(int argc, const char **argv) {
 		if(pb.proc == NULL) {
 //			fprintf(stderr, "%s: you must supply a subcommand (copy, paste, or clear)\n", argv0);
 //			retval = 1;
-			if(!pb.type)
-				pb.type = CFRetain(kUTTypeUTF8PlainText);
 			if(!isatty(pb.in_fd))
 				retval = copy(&pb);
 			//Paste when...
