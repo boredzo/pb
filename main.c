@@ -487,13 +487,16 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 			                  	  UTF16ExtData ? &UTF16ExtData : NULL,
 			                  	  &UTF8Data,
 			                  	  MacRomanData ? &MacRomanData : NULL);
-				data = UTF8Data;
 				pbptr->type = CFRetain(kUTTypeUTF8PlainText);
+				//Clean up after PasteboardCopyItemFlavorData.
+				if(UTF16Data)    CFRelease(UTF16Data);
+				if(UTF16ExtData) CFRelease(UTF16ExtData);
+				if(MacRomanData) CFRelease(MacRomanData);
 			}
 		}
+		data = UTF8Data;
 	} else {
 		//There is an explicit type.
-pure_data:
 		err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, pbptr->type, &data);
 	}
 
