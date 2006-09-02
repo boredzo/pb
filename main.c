@@ -1147,7 +1147,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					                                     &numBytes);
 					CFDataSetLength(mutableData, numBytes);
 					CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
-					*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
+					*inoutMacRomanData = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
 				 	 */
 					success_MacRoman = (*inoutMacRomanData != NULL);
