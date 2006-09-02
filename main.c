@@ -438,9 +438,9 @@ pure_data:
 			}
 		}
 		if(UTF16ExtData && !typeIsUTF16Ext) {
-			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeUTF16ExtPlainText, UTF16ExtData, kPasteboardFlavorSenderTranslated);
+			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeUTF16ExternalPlainText, UTF16ExtData, kPasteboardFlavorSenderTranslated);
 			if(err != noErr) {
-				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li\n", argv0, make_cstr_for_CFStr(kUTTypeUTF16ExtPlainText, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
+				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li\n", argv0, make_cstr_for_CFStr(kUTTypeUTF16ExternalPlainText, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
 				err = noErr; //These aren't critically-important.
 			}
 		}
@@ -452,72 +452,12 @@ pure_data:
 			}
 		}
 		if(MacRomanData && !typeIsMacRoman) {
-			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeMacRomanPlainText, MacRomanData, kPasteboardFlavorSenderTranslated);
+			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, MacRoman_UTI, MacRomanData, kPasteboardFlavorSenderTranslated);
 			if(err != noErr) {
-				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li\n", argv0, make_cstr_for_CFStr(kUTTypeMacRomanPlainText, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
+				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li\n", argv0, make_cstr_for_CFStr(MacRoman_UTI, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
 				err = noErr; //These aren't critically-important.
 			}
 		}
-	}
-
-	if(!string) {
-		//If --type was specified, there's no string form yet.
-		//We need to create one to do translation.
-
-		CFStringEncoding encoding = 0;
-
-		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText))
-			encoding = kCFStringEncodingUnicode;
-		else if(UTTypeConformsTo(pbptr->type, kUTTypeUTF8PlainText))
-			encoding = kCFStringEncodingUTF8;
-		else if(UTTypeConformsTo(pbptr->type, MacRoman_UTI))
-			encoding = kCFStringEncodingMacRoman;
-
-		if(encoding)
-			string = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, data, encoding);
-	}
-
-	if(string) {
-		//If we copied a text type (either UTF-16 or MacRoman), convert to the
-		//  other type if possible.
-
-		CFStringRef otherType = NULL;
-		CFStringEncoding otherEncoding = 0;
-
-		PasteboardFlavorFlags flavorFlags;
-		
-		if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText)
-		&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, MacRoman_UTI, &flavorFlags) != noErr))
-		{
-			//Convert to MacRoman.
-			otherType = CFRetain(MacRoman_UTI);
-			otherEncoding = kCFStringEncodingMacRoman;
-		} else
-		if(UTTypeConformsTo(pbptr->type, MacRoman_UTI)
-		&& (PasteboardGetItemFlavorFlags(pbptr->pasteboard, item, kUTTypeUTF16PlainText, &flavorFlags) != noErr))
-		{
-			//Convert to UTF-16.
-			otherType = CFRetain(kUTTypeUTF16PlainText);
-			otherEncoding = kCFStringEncodingUnicode;
-		}
-
-		if(otherType) {
-			CFDataRef otherData = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, otherEncoding, /*lossByte*/ '?');
-
-			if(otherData) {
-				err = PasteboardPutItemFlavor(pbptr->pasteboard, item, otherType, otherData, kPasteboardFlavorSenderTranslated);
-				if(err != noErr) {
-					fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li\n", argv0, make_cstr_for_CFStr(otherType, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
-					err = noErr;
-				}
-
-				CFRelease(otherData);
-			}
-
-			CFRelease(otherType);
-		}
-
-		CFRelease(string);
 	}
 
 	CFRelease(data);
@@ -1046,19 +986,19 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			                                 CFDataGetBytePtr(*inoutUTF16ExtData),
 			                                 CFDataGetLength(*inoutUTF16ExtData),
 			                                 kCFStringEncodingUnicode,
-			                                 YES);
+			                                 true);
 		} else if(inoutUTF8Data && *inoutUTF8Data) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutUTF8Data),
 			                                 CFDataGetLength(*inoutUTF8Data),
 			                                 kCFStringEncodingUTF8,
-			                                 NO);
+			                                 false);
 		} else if(inoutMacRomanData && *inoutMacRomanData) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutMacRomanData),
 			                                 CFDataGetLength(*inoutMacRomanData),
 			                                 kCFStringEncodingMacRoman,
-			                                 NO);
+			                                 false);
 		}
 
 		if(string) {
@@ -1073,24 +1013,24 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 		CFStringRef string = NULL;
 		if(inoutUTF16Data && *inoutUTF16Data) {
 			string = CFStringCreateWithCharacters(kCFAllocatorDefault,
-			                                      CFDataGetBytePtr(*inoutUTF16Data),
+			                                      (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
 			                                      CFDataGetLength(*inoutUTF16Data));
 		} else if(inoutUTF8Data && *inoutUTF8Data) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutUTF8Data),
 			                                 CFDataGetLength(*inoutUTF8Data),
 			                                 kCFStringEncodingUTF8,
-			                                 NO);
+			                                 false);
 		} else if(inoutMacRomanData && *inoutMacRomanData) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutMacRomanData),
 			                                 CFDataGetLength(*inoutMacRomanData),
 			                                 kCFStringEncodingMacRoman,
-			                                 NO);
+			                                 false);
 		}
 
 		if(string) {
-			*inoutUTF16ExtData = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUnicode);
+			*inoutUTF16ExtData = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUnicode, /*lossByte*/ 0U);
 			success_UTF16Ext = (*inoutUTF16ExtData != NULL);
 
 			CFRelease(string);
@@ -1102,20 +1042,20 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 		CFStringRef string = NULL;
 		if(inoutUTF16Data && *inoutUTF16Data) {
 			string = CFStringCreateWithCharacters(kCFAllocatorDefault,
-			                                      CFDataGetBytePtr(*inoutUTF16Data),
+			                                      (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
 			                                      CFDataGetLength(*inoutUTF16Data));
 		} else if(inoutUTF16ExtData && *inoutUTF16ExtData) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutUTF16ExtData),
 			                                 CFDataGetLength(*inoutUTF16ExtData),
 			                                 kCFStringEncodingUnicode,
-			                                 YES);
+			                                 true);
 		} else if(inoutMacRomanData && *inoutMacRomanData) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutMacRomanData),
 			                                 CFDataGetLength(*inoutMacRomanData),
 			                                 kCFStringEncodingMacRoman,
-			                                 NO);
+			                                 false);
 		}
 
 		if(string) {
@@ -1127,7 +1067,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			                                             range,
 			                                             kCFStringEncodingUTF8,
 			                                             /*lossByte*/ 0U,
-			                                             /*isExternalRepresentation*/ NO,
+			                                             /*isExternalRepresentation*/ false,
 			                                             /*buffer*/ NULL,
 			                                             /*maxBufLen*/ maxBytes,
 			                                             &numBytes);
@@ -1138,12 +1078,12 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					                                     range,
 					                                     kCFStringEncodingUTF8,
 					                                     /*lossByte*/ 0U,
-					                                     /*isExternalRepresentation*/ NO,
+					                                     /*isExternalRepresentation*/ false,
 					                                     CFDataGetMutableBytePtr(mutableData),
 					                                     /*maxBufLen*/ numBytes,
 					                                     &numBytes);
 					CFDataSetLength(mutableData, numBytes);
-					CFStringGetCharacters(string, range, CFDataGetMutableBytePtr(mutableData));
+					CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
 					*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
 				 	 */
@@ -1160,20 +1100,20 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 		CFStringRef string = NULL;
 		if(inoutUTF16Data && *inoutUTF16Data) {
 			string = CFStringCreateWithCharacters(kCFAllocatorDefault,
-			                                      CFDataGetBytePtr(*inoutUTF16Data),
+			                                      (const UniChar *)CFDataGetBytePtr(*inoutUTF16Data),
 			                                      CFDataGetLength(*inoutUTF16Data));
 		} else if(inoutUTF16ExtData && *inoutUTF16ExtData) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutUTF16ExtData),
 			                                 CFDataGetLength(*inoutUTF16ExtData),
 			                                 kCFStringEncodingUnicode,
-			                                 YES);
+			                                 true);
 		} else if(inoutUTF8Data && *inoutUTF8Data) {
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutUTF8Data),
 			                                 CFDataGetLength(*inoutUTF8Data),
 			                                 kCFStringEncodingUTF8,
-			                                 NO);
+			                                 false);
 		}
 
 		if(string) {
@@ -1185,7 +1125,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			                                             range,
 			                                             kCFStringEncodingMacRoman,
 			                                             /*lossByte*/ '?',
-			                                             /*isExternalRepresentation*/ NO,
+			                                             /*isExternalRepresentation*/ false,
 			                                             /*buffer*/ NULL,
 			                                             /*maxBufLen*/ maxBytes,
 			                                             &numBytes);
@@ -1196,12 +1136,12 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					                                     range,
 					                                     kCFStringEncodingMacRoman,
 					                                     /*lossByte*/ '?',
-					                                     /*isExternalRepresentation*/ NO,
+					                                     /*isExternalRepresentation*/ false,
 					                                     CFDataGetMutableBytePtr(mutableData),
 					                                     /*maxBufLen*/ numBytes,
 					                                     &numBytes);
 					CFDataSetLength(mutableData, numBytes);
-					CFStringGetCharacters(string, range, CFDataGetMutableBytePtr(mutableData));
+					CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
 					*inoutUTF16Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
 				 	 */
@@ -1222,7 +1162,7 @@ static CFDataRef createCFDataFromCFString(CFStringRef string) {
 		CFRange range = { 0, CFStringGetLength(string) };
 		CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, range.length * sizeof(UniChar));
 		if(mutableData) {
-			CFStringGetCharacters(string, range, CFDataGetMutableBytePtr(mutableData));
+			CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
 			data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 			CFRelease(mutableData);
 			 */
