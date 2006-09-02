@@ -414,6 +414,7 @@ pure_data:
 	CFDataRef UTF16Data = NULL, UTF16ExtData = NULL, UTF8Data = NULL, MacRomanData = NULL;
 	Boolean typeIsUTF16 = false, typeIsUTF16Ext = false, typeIsUTF8 = false, typeIsMacRoman = false;
 	Boolean isTextData = false; //Note: We can't just test conformance to public.text because that includes formats like public.rtf.
+	fprintf(stderr, "pbptr->type is %s\n", make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
 	if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText)) {
 		UTF16Data = data;
 		isTextData = typeIsUTF16 = true;
@@ -427,8 +428,10 @@ pure_data:
 		MacRomanData = data;
 		isTextData = typeIsMacRoman = true;
 	}
+	fprintf(stderr, "typeIsUTF16: %hhu; typeIsUTF16Ext: %hhu; typeIsUTF8: %hhu; typeIsMacRoman: %hhu \n", typeIsUTF16, typeIsUTF16Ext, typeIsUTF8, typeIsMacRoman);
 	if(isTextData) {
 		convert_encodings(&UTF16Data, &UTF16ExtData, &UTF8Data, &MacRomanData);
+		fprintf(stderr, "data lengths: UTF-16 %lli, UTF-16 ext %lli, UTF-8 %lli, MacRoman %lli \n", (long long)(UTF16Data ? CFDataGetLength(UTF16Data) : -1LL), (long long)(UTF16ExtData ? CFDataGetLength(UTF16ExtData) : -1LL), (long long)(UTF8Data ? CFDataGetLength(UTF8Data) : -1LL), (long long)(MacRomanData ? CFDataGetLength(MacRomanData) : -1LL));
 		//Only copy it if we did not already copy it (which we have done if its type is pbptr->type).
 		if(UTF16Data && !typeIsUTF16) {
 			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeUTF16PlainText, UTF16Data, kPasteboardFlavorSenderTranslated);
@@ -987,18 +990,21 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 	if(inoutUTF16Data && !*inoutUTF16Data) {
 		CFStringRef string = NULL;
 		if(inoutUTF16ExtData && *inoutUTF16ExtData) {
+			fprintf(stderr, "Creating string for UTF-16 from UTF-16 external\n");
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutUTF16ExtData),
 			                                 CFDataGetLength(*inoutUTF16ExtData),
 			                                 kCFStringEncodingUnicode,
 			                                 true);
 		} else if(inoutUTF8Data && *inoutUTF8Data) {
+			fprintf(stderr, "Creating string for UTF-16 from UTF-8\n");
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutUTF8Data),
 			                                 CFDataGetLength(*inoutUTF8Data),
 			                                 kCFStringEncodingUTF8,
 			                                 false);
 		} else if(inoutMacRomanData && *inoutMacRomanData) {
+			fprintf(stderr, "Creating string for UTF-16 from MacRoman\n");
 			string = CFStringCreateWithBytes(kCFAllocatorDefault,
 			                                 CFDataGetBytePtr(*inoutMacRomanData),
 			                                 CFDataGetLength(*inoutMacRomanData),
@@ -1079,6 +1085,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			if(numCharsConverted) {
 				CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, numBytes);
 				if(mutableData) {
+					CFDataSetLength(mutableData, numBytes);
 					numCharsConverted = CFStringGetBytes(string,
 					                                     range,
 					                                     kCFStringEncodingUTF8,
@@ -1087,7 +1094,6 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					                                     CFDataGetMutableBytePtr(mutableData),
 					                                     /*maxBufLen*/ numBytes,
 					                                     &numBytes);
-					CFDataSetLength(mutableData, numBytes);
 					CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
 					*inoutUTF8Data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
@@ -1137,6 +1143,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 			if(numCharsConverted) {
 				CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, numBytes);
 				if(mutableData) {
+					CFDataSetLength(mutableData, numBytes);
 					numCharsConverted = CFStringGetBytes(string,
 					                                     range,
 					                                     kCFStringEncodingMacRoman,
@@ -1145,7 +1152,6 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 					                                     CFDataGetMutableBytePtr(mutableData),
 					                                     /*maxBufLen*/ numBytes,
 					                                     &numBytes);
-					CFDataSetLength(mutableData, numBytes);
 					CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
 					*inoutMacRomanData = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 					CFRelease(mutableData);
@@ -1165,12 +1171,16 @@ static CFDataRef createCFDataFromCFString(CFStringRef string) {
 
 	if(string) {
 		CFRange range = { 0, CFStringGetLength(string) };
-		CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, range.length * sizeof(UniChar));
+		fprintf(stderr, "String length: %lli\n", (long long)range.length);
+		CFIndex dataSize = range.length * sizeof(UniChar);
+		CFMutableDataRef mutableData = CFDataCreateMutable(kCFAllocatorDefault, dataSize);
 		if(mutableData) {
+			CFDataSetLength(mutableData, dataSize);
 			CFStringGetCharacters(string, range, (UniChar *)CFDataGetMutableBytePtr(mutableData));
 			data = mutableData;/*CFDataCreateCopy(kCFAllocatorDefault, mutableData);
 			CFRelease(mutableData);
 			 */
+			fprintf(stderr, "Data length: %lli\n", (long long)CFDataGetLength(mutableData));
 		}
 	}
 
