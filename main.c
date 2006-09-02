@@ -1130,7 +1130,7 @@ static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF1
 		if(string) {
 			CFRange range = { 0, CFStringGetLength(string) };
 			CFIndex numBytes = 0;
-			CFIndex maxBytes = CFStringGetMaximumSizeForEncoding(range.length, kCFStringEncodingUTF8);
+			CFIndex maxBytes = CFStringGetMaximumSizeForEncoding(range.length, kCFStringEncodingMacRoman);
 
 			CFIndex numCharsConverted = CFStringGetBytes(string,
 			                                             range,
