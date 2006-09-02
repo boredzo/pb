@@ -976,7 +976,12 @@ static void pb_deallocateall(void) {
 }
 
 static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF16ExtData, CFDataRef *inoutUTF8Data, CFDataRef *inoutMacRomanData) {
-	Boolean success_UTF16 = false, success_UTF16Ext = false, success_UTF8 = false, success_MacRoman = false;
+	//If a format is not requested, it has not failed, and so we should consider it to have succeeded, so we set its variable to true.
+	//But if it is requested, it has not succeeded until it has been attempted, so we set its variable to false.
+	Boolean success_UTF16    = ((!inoutUTF16Data)    || *inoutUTF16Data);
+	Boolean success_UTF16Ext = ((!inoutUTF16ExtData) || *inoutUTF16ExtData);
+	Boolean success_UTF8     = ((!inoutUTF8Data)     || *inoutUTF8Data);
+	Boolean success_MacRoman = ((!inoutMacRomanData) || *inoutMacRomanData);
 
 	//Convert UTF-16 (with BOM), UTF-8, or MacRoman to UTF-16.
 	if(inoutUTF16Data && !*inoutUTF16Data) {
