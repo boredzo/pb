@@ -312,17 +312,17 @@ static PasteboardItemID getRandomPasteboardItemID(void) {
 #pragma mark -
 
 int copy(struct argblock *pbptr) {
-#	define CONSUME_ARG                                                                                 \
-		if(pbptr->argc) {                                                                               \
-			//If we don't already have an explicit type, try to get one. Otherwise, just get a filename. \
-			CFStringRef UTI = pbptr->type ? NULL : create_UTI_with_cstr(*(pbptr->argv));                  \
-			if(UTI)                                                                                        \
-				pbptr->type = UTI;                                                                          \
-			else {                                                                                           \
-				//This is a filename.                                                                         \
-				pbptr->in_fd = open(*(pbptr->argv), O_RDONLY, 0644);                                           \
-			}                                                                                                   \
-			++(pbptr->argv); --(pbptr->argc);                                                                    \
+#	define CONSUME_ARG                                                                                   \
+		if(pbptr->argc) {                                                                                 \
+			/*If we don't already have an explicit type, try to get one. Otherwise, just get a filename.*/ \
+			CFStringRef UTI = pbptr->type ? NULL : create_UTI_with_cstr(*(pbptr->argv));                    \
+			if(UTI)                                                                                          \
+				pbptr->type = UTI;                                                                            \
+			else {                                                                                             \
+				/*This is a filename.*/                                                                         \
+				pbptr->in_fd = open(*(pbptr->argv), O_RDONLY, 0644);                                             \
+			}                                                                                                     \
+			++(pbptr->argv); --(pbptr->argc);                                                                      \
 		}
 	CONSUME_ARG
 	CONSUME_ARG
