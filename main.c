@@ -11,6 +11,7 @@
  *	- Add multicopy subcmd: multicopy [options] filename [options] filename …
  *	- Collapse in_fd, out_fd to one FD.
  *	- Hook up convert_encodings.
+ *	- Find a way to not assume UTF-8 I/O.
  */
 
 struct argblock {
@@ -52,6 +53,9 @@ static void  pb_deallocateall(void);
 static Boolean convert_encodings(CFDataRef *inoutUTF16Data, CFDataRef *inoutUTF16ExtData, CFDataRef *inoutUTF8Data, CFDataRef *inoutMacRomanData);
 //Returns a CFData containing UTF-16 (without BOM) data for the string. Counterpart to CFStringCreateExternalRepresentation.
 static CFDataRef createCFDataFromCFString(CFStringRef string);
+
+//If the given C-string is not a known UTI, returns NULL. Otherwise returns a CFString for it.
+static CFStringRef create_UTI_with_cstr(const char *arg);
 
 static inline void initpb(struct argblock *pbptr);
 static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding);
@@ -308,6 +312,17 @@ static PasteboardItemID getRandomPasteboardItemID(void) {
 #pragma mark -
 
 int copy(struct argblock *pbptr) {
+	if(pbptr->argc) {
+		CFStringRef UTI = create_UTI_with_cstr(*(pbptr->argv));
+		if(UTI)
+			pbptr->type = UTI;
+		else {
+			//This is a filename.
+			pbptr->in_fd = open(*(pbptr->argv), O_RDONLY, 0644);
+		}
+		++(pbptr->argv); --(pbptr->argc);
+	}
+
 	char *buf = NULL;
 	size_t total_size = 0U;
 	Boolean mapped = false;
@@ -1131,4 +1146,37 @@ static CFDataRef createCFDataFromCFString(CFStringRef string) {
 	}
 
 	return data;
+}
+
+static CFStringRef create_UTI_with_cstr(const char *arg) {
+	Boolean isUTI = false;
+
+	CFStringRef possibleUTI = CFStringCreateWithCString(kCFAllocatorDefault, arg, kCFStringEncodingUTF8);
+	if(possibleUTI) {
+		CFStringRef tag = UTTypeCopyPreferredTagWithClass(possibleUTI, kUTTagClassFilenameExtension);
+		if(tag)
+			isUTI = true;
+		else {
+			tag = UTTypeCopyPreferredTagWithClass(possibleUTI, kUTTagClassOSType);
+			if(tag)
+				isUTI = true;
+			else {
+				tag = UTTypeCopyPreferredTagWithClass(possibleUTI, kUTTagClassNSPboardType);
+				if(tag)
+					isUTI = true;
+				else {
+					tag = UTTypeCopyPreferredTagWithClass(possibleUTI, kUTTagClassMIMEType);
+					if(tag)
+						isUTI = true;
+				}
+			}
+		}
+
+		if(!isUTI) {
+			CFRelease(possibleUTI);
+			possibleUTI = NULL;
+		}
+	}
+
+	return possibleUTI;
 }
