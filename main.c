@@ -125,8 +125,6 @@ int main(int argc, const char **argv) {
 
 	if(retval == 0) {
 		if(pb.proc == NULL) {
-//			fprintf(stderr, "%s: you must supply a subcommand (copy, paste, or clear)\n", argv0);
-//			retval = 1;
 			if(!isatty(pb.in_fd))
 				retval = copy(&pb);
 			//Paste when...
