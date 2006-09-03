@@ -564,7 +564,7 @@ int paste(struct argblock *pbptr) {
 		if(strchr(*(pbptr->argv), '.')) {
 			if(pbptr->type != NULL) {
 				//This is a filename.
-				pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT, 0644);
+				pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			} else {
 				//UTI
 				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *pbptr->argv, kCFStringEncodingUTF8);
@@ -574,13 +574,8 @@ int paste(struct argblock *pbptr) {
 	}
 	if(pbptr->argc) {
 		if(pbptr->out_fd < 0 || pbptr->out_fd == STDOUT_FILENO)
-			pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT, 0644);
+			pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	}
-
-	//Make sure we paste into an empty file.
-	//Why not truncate stdout? If we do, >> doesn't work.
-	if(pbptr->out_fd != STDOUT_FILENO)
-		ftruncate(pbptr->out_fd, 0);
 
 	OSStatus err;
 	ItemCount numItems;
