@@ -322,6 +322,11 @@ int copy(struct argblock *pbptr) {
 		}
 		++(pbptr->argv); --(pbptr->argc);
 	}
+	if(pbptr->argc) {
+		//We got a UTI, but we have at least one more argument. Treat it as a filename.
+		if(pbptr->in_fd < 0 || pbptr->in_fd == STDIN_FILENO)
+			pbptr->in_fd = open(*(pbptr->argv), O_RDONLY, 0644);
+	}
 
 	char *buf = NULL;
 	size_t total_size = 0U;
