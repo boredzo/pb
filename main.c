@@ -570,7 +570,6 @@ int paste(struct argblock *pbptr) {
 
 	OSStatus err;
 	ItemCount numItems;
-//	printf("pasteboard: %p\n", pbptr->pasteboard);
 	err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 	if(index) {
 		if(err == noErr && index > numItems) {
@@ -621,7 +620,6 @@ int paste_growl(struct argblock *pbptr) {
 
 	OSStatus err;
 	ItemCount numItems;
-//	printf("pasteboard: %p\n", pbptr->pasteboard);
 	err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 	if(index) {
 		if(err == noErr && index > numItems) {
