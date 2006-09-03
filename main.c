@@ -880,7 +880,6 @@ int version(struct argblock *pbptr) {
 		   "read and write pasteboards (including the clipboard)\n"
 		   "\n"
 		   "type %s help for usage\n", argv0);
-	fputs("EXPERIMENTAL\n", stdout);
 	return 0;
 }
 
