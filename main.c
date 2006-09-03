@@ -293,13 +293,6 @@ static PasteboardItemID getRandomPasteboardItemID(void) {
 	srandom(time(NULL));
 	item = (PasteboardItemID)random();
 
-	//Random returns a long, which is 4 bytes.
-	//But on Tiger, pointers can be 8 bytes, and PasteboardItemID is a pointer.
-	if(sizeof(PasteboardItemID) > sizeof(int)) {
-		ptrdiff_t itemInt = (((ptrdiff_t)item) << ((sizeof(PasteboardItemID) - sizeof(int)) * 8U)) ^ random();
-		item = (PasteboardItemID)itemInt;
-	}
-
 	//An item ID of 0 is illegal. Make sure it doesn't happen.
 	if(item == 0)
 		++item;
