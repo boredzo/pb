@@ -612,7 +612,7 @@ int paste(struct argblock *pbptr) {
 	return retval;
 }
 int paste_growl(struct argblock *pbptr) {
-	fputs("paste_growl called\n", stdout);
+	fputs("paste_growl called\n", stderr);
 	int retval = 0;
 	
 	UInt32 index = 0U; //Index of the item to paste.
