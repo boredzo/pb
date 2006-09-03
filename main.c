@@ -368,7 +368,6 @@ int copy(struct argblock *pbptr) {
 
 	if(pbptr->flags.infer_translate_newlines)
 		pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, kUTTypeText);
-	fprintf(stderr, "Translate newlines? %u\n", pbptr->flags.translate_newlines);
 	if(pbptr->flags.translate_newlines) {
 		unsigned char *ptr = (unsigned char *)buf;
 
@@ -414,7 +413,6 @@ pure_data:
 	CFDataRef UTF16Data = NULL, UTF16ExtData = NULL, UTF8Data = NULL, MacRomanData = NULL;
 	Boolean typeIsUTF16 = false, typeIsUTF16Ext = false, typeIsUTF8 = false, typeIsMacRoman = false;
 	Boolean isTextData = false; //Note: We can't just test conformance to public.text because that includes formats like public.rtf.
-	fprintf(stderr, "pbptr->type is %s\n", make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
 	if(UTTypeConformsTo(pbptr->type, kUTTypeUTF16PlainText)) {
 		UTF16Data = data;
 		isTextData = typeIsUTF16 = true;
@@ -428,10 +426,8 @@ pure_data:
 		MacRomanData = data;
 		isTextData = typeIsMacRoman = true;
 	}
-	fprintf(stderr, "typeIsUTF16: %hhu; typeIsUTF16Ext: %hhu; typeIsUTF8: %hhu; typeIsMacRoman: %hhu \n", typeIsUTF16, typeIsUTF16Ext, typeIsUTF8, typeIsMacRoman);
 	if(isTextData) {
 		convert_encodings(&UTF16Data, &UTF16ExtData, &UTF8Data, &MacRomanData);
-		fprintf(stderr, "data lengths: UTF-16 %lli, UTF-16 ext %lli, UTF-8 %lli, MacRoman %lli \n", (long long)(UTF16Data ? CFDataGetLength(UTF16Data) : -1LL), (long long)(UTF16ExtData ? CFDataGetLength(UTF16ExtData) : -1LL), (long long)(UTF8Data ? CFDataGetLength(UTF8Data) : -1LL), (long long)(MacRomanData ? CFDataGetLength(MacRomanData) : -1LL));
 		//Only copy it if we did not already copy it (which we have done if its type is pbptr->type).
 		if(UTF16Data && !typeIsUTF16) {
 			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeUTF16PlainText, UTF16Data, kPasteboardFlavorSenderTranslated);
