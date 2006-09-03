@@ -536,11 +536,12 @@ int paste(struct argblock *pbptr) {
 
 	UInt32 index = 0U; //Index of the item to paste.
 
-	if(pbptr->argc)
+	if(pbptr->argc) {
 		if(index = strtoul(*(pbptr->argv), NULL, 0)) {
 			++(pbptr->argv); --(pbptr->argc);
 		}
-	if(pbptr->argc)
+	}
+	if(pbptr->argc) {
 		if(strchr(*(pbptr->argv), '.')) {
 			if(pbptr->type != NULL) {
 				//This is a filename.
@@ -551,9 +552,11 @@ int paste(struct argblock *pbptr) {
 			}
 			++(pbptr->argv); --(pbptr->argc);
 		}
-	if(pbptr->argc)
+	}
+	if(pbptr->argc) {
 		if(pbptr->out_fd < 0 || pbptr->out_fd == STDOUT_FILENO)
 			pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT, 0644);
+	}
 
 	//Make sure we paste into an empty file.
 	//Why not truncate stdout? If we do, >> doesn't work.
