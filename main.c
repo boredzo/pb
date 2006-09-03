@@ -189,8 +189,6 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 		case global_options:
 			if(testarg(arg, "--type=", &param)) {
 				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
-				if(pbptr->flags.infer_translate_newlines)
-					pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, CFSTR("public.text"));
 			} else if(testarg(arg, "--pasteboard=", &param)) {
 				pbptr->pasteboardID_cstr = param;
 				pbptr->pasteboardID = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
@@ -368,6 +366,9 @@ int copy(struct argblock *pbptr) {
 		return 2;
 	}
 
+	if(pbptr->flags.infer_translate_newlines)
+		pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, kUTTypeText);
+	fprintf(stderr, "Translate newlines? %u\n", pbptr->flags.translate_newlines);
 	if(pbptr->flags.translate_newlines) {
 		unsigned char *ptr = (unsigned char *)buf;
 
@@ -530,6 +531,8 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 		CFIndex length = CFDataGetLength(data);
 		const unsigned char *rptr = CFDataGetBytePtr(data);
 		void *buf = NULL;
+		if(pbptr->flags.infer_translate_newlines)
+			pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, kUTTypeText);
 		if(pbptr->flags.translate_newlines) {
 			buf = malloc(length);
 			unsigned char *wptr = buf;
@@ -719,6 +722,8 @@ int paste_growl(struct argblock *pbptr) {
 				fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err);
 				retval = 2;
 			} else if(stringData) {
+				if(pbptr->flags.infer_translate_newlines)
+					pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, kUTTypeText);
 				if(pbptr->flags.translate_newlines) {
 					CFIndex length = CFDataGetLength(stringData);
 					CFMutableDataRef mutableStringData = CFDataCreateMutableCopy(kCFAllocatorDefault, length, stringData);
