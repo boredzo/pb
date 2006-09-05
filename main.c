@@ -559,62 +559,89 @@ int paste(struct argblock *pbptr) {
 			pbptr->itemIndex = 0U;
 		return paste_one(pbptr);
 	} else {
-		ItemCount numItems;
+		ItemCount numItems = 0U;
 		err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 		//XXX Error-check!
 
-		struct argblock these_args;
+		struct argblock  these_args;
+		struct argblock *these_args_ptr = &these_args;
+		these_args.out_fd    = (pbptr->out_fd    >= 0)  ? pbptr->outfd     : STDOUT_FILENO;
+		these_args.itemIndex = (pbptr->itemIndex >  0U) ? pbptr->itemIndex : 1U;
+		these_args.type      = (pbptr->type)            ? pbptr->type      : kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
+
 		const char *filename = NULL;
 		const char *type_cstr = NULL;
+		CFStringRef type = NULL;
 		const char *index_cstr = NULL;
 		while(pbptr->argc) {
-			//Any options provided before the paste command are the default values for options after the paste command.
+			//Any options provided before the paste command are the default values for options after the paste command. If we encounter another value on the command line, use that.
 			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
-			these_args = *pbptr;
-			while((pbptr->argc) && !(filename && type_cstr && index_cstr)) {
+			++these_args.itemIndex;
+			Boolean hasEncounteredIndex = false;
+			UInt32 numericValue;
+
+			while((these_args_ptr->argc) && !(filename && type_cstr && index_cstr)) {
 				//--out-file=
 				//00000000011
 				//12345678901
-				if(strncmp(*(pbptr->argv), "--out-file=", 11) == 0) {
+				if(strncmp(*(these_args_ptr->argv), "--out-file=", 11) == 0) {
 					if(!filename)
-						filename = (*(pbptr->argv)) + 11;
+						filename = (*(these_args_ptr->argv)) + 11;
 					else
 						break;
 				//--type=
 				//0000000
 				//1234567
-				} else if(strncmp(*(pbptr->argv), "--type=", 7) == 0) {
+				} else if(strncmp(*(these_args_ptr->argv), "--type=", 7) == 0) {
 					if(!type)
-						type = create_UTI_with_cstr(*(pbptr->argv) + 7);
+						type = create_UTI_with_cstr(*(these_args_ptr->argv) + 7);
 					else
 						break;
 				//--index=
 				//00000000
 				//12345678
-				} else if(strncmp(*(pbptr->argv), "--index=", 8) == 0) {
-					if(!index_cstr)
-						index_cstr = (*(pbptr->argv)) + 8;
-					else
-						break;
-				} else if((!index_cstr) && (index = strtoul(*(pbptr->argv), NULL, 0))) {
-					index_cstr = *(pbptr->argv);
-				} else if((!type) && (type = create_UTI_with_cstr(*(pbptr->argv)))) {
-					type_cstr = *(pbptr->argv);
-					pbptr->type = type;
-				} else if(pbptr->out_fd < 0) {
-					if(strchr(*(pbptr->argv), '.')) {
-						if(pbptr->type != NULL) {
-							//This is a filename.
-							pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+				} else if(strncmp(*(these_args_ptr->argv), "--index=", 8) == 0) {
+					if(!index_cstr) {
+						index_cstr = (*(these_args_ptr->argv)) + 8;
+						numericValue = strtoul(*(these_args_ptr->argv) + 8, NULL, 10);
+						if(numericValue == 0U) {
+							fprintf(stderr, "%s: Invalid index %u\n", argv0, numericValue);
+							return 1;
 						} else {
-							//UTI
-							pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *pbptr->argv, kCFStringEncodingUTF8);
+							if(hasEncounteredIndex)
+								break;
+							else {
+								these_args_ptr->itemIndex = numericValue;
+								index_cstr = *(these_args_ptr->argv);
+								hasEncounteredIndex = true;
+							}
 						}
-						++(pbptr->argv); --(pbptr->argc);
+					} else
+						break;
+				} else {
+					numericValue = strtoul(*(these_args_ptr->argv), NULL, 10);
+					if(numericValue > 0U) {
+						if(hasEncounteredIndex)
+							break;
+						else {
+							these_args_ptr->itemIndex = numericValue;
+							index_cstr = *(these_args_ptr->argv);
+							hasEncounteredIndex = true;
+						}
+					} else if((type = create_UTI_with_cstr(*(these_args_ptr->argv)))) {
+						if(these_args_ptr->type)
+							break;
+						else {
+							type_cstr = *(these_args_ptr->argv);
+							these_args_ptr->type = type;
+						}
+					} else if(these_args_ptr->out_fd < 0) {
+						//UTI
+						these_args_ptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *these_args_ptr->argv, kCFStringEncodingUTF8);
 					}
 				}
-				++(pbptr->argv); --(pbptr->argc);
+				++(these_args_ptr->argv); --(these_args_ptr->argc);
 			}
 		}
 	}
