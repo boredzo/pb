@@ -12,6 +12,10 @@
  *	- Collapse in_fd, out_fd to one FD.
  *	- Hook up convert_encodings.
  *	- Find a way to not assume UTF-8 I/O.
+ *	- Add function: Boolean compare_argument(const char arg_name_char, const char *arg_name, const char **argv, const char **out_arg_value)
+ *	  Example: compare_argument('o', 'out-file', pbptr->argv, &filename)
+ *	  Tests whether an argument matches a given name, and if it does and out_arg_value is not NULL, returns the value for the argument (either the string after "=" in argv[0], or argv[1]).
+ *	  Replaces test_arg.
  */
 
 struct argblock {
@@ -27,6 +31,8 @@ struct argblock {
 	PasteboardRef pasteboard;
 	CFStringRef pasteboardID;
 	const char *pasteboardID_cstr;
+
+	UInt32 itemIndex;
 
 	CFStringRef type; //UTI
 
@@ -544,23 +550,72 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 int paste(struct argblock *pbptr) {
 	int retval = 0;
 
-	UInt32 index = 0U; //Index of the item to paste.
+	if(!(pbptr->argc)) {
+		if((pbptr->out_fd) < 0)
+			pbptr->out_fd = STDOUT_FILENO;
+		if(!(pbptr->type))
+			pbptr->type = CFRetain(kUTTypeUTF8PlainText);
+		if((pbptr->itemIndex) == 0U)
+			pbptr->itemIndex = 0U;
+		return paste_one(pbptr);
+	} else {
+		ItemCount numItems;
+		err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
+		//XXX Error-check!
 
-	if(pbptr->argc) {
-		if(index = strtoul(*(pbptr->argv), NULL, 0)) {
-			++(pbptr->argv); --(pbptr->argc);
-		}
-	}
-	if(pbptr->argc) {
-		if(strchr(*(pbptr->argv), '.')) {
-			if(pbptr->type != NULL) {
-				//This is a filename.
-				pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-			} else {
-				//UTI
-				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *pbptr->argv, kCFStringEncodingUTF8);
+		struct argblock these_args;
+		const char *filename = NULL;
+		const char *type_cstr = NULL;
+		const char *index_cstr = NULL;
+		while(pbptr->argc) {
+			//Any options provided before the paste command are the default values for options after the paste command.
+			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
+			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
+			these_args = *pbptr;
+			while((pbptr->argc) && !(filename && type_cstr && index_cstr)) {
+				//--out-file=
+				//00000000011
+				//12345678901
+				if(strncmp(*(pbptr->argv), "--out-file=", 11) == 0) {
+					if(!filename)
+						filename = (*(pbptr->argv)) + 11;
+					else
+						break;
+				//--type=
+				//0000000
+				//1234567
+				} else if(strncmp(*(pbptr->argv), "--type=", 7) == 0) {
+					if(!type)
+						type = create_UTI_with_cstr(*(pbptr->argv) + 7);
+					else
+						break;
+				//--index=
+				//00000000
+				//12345678
+				} else if(strncmp(*(pbptr->argv), "--index=", 8) == 0) {
+					if(!index_cstr)
+						index_cstr = (*(pbptr->argv)) + 8;
+					else
+						break;
+				} else if((!index_cstr) && (index = strtoul(*(pbptr->argv), NULL, 0))) {
+					index_cstr = *(pbptr->argv);
+				} else if((!type) && (type = create_UTI_with_cstr(*(pbptr->argv)))) {
+					type_cstr = *(pbptr->argv);
+					pbptr->type = type;
+				} else if(pbptr->out_fd < 0) {
+					if(strchr(*(pbptr->argv), '.')) {
+						if(pbptr->type != NULL) {
+							//This is a filename.
+							pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+						} else {
+							//UTI
+							pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *pbptr->argv, kCFStringEncodingUTF8);
+						}
+						++(pbptr->argv); --(pbptr->argc);
+					}
+				}
+				++(pbptr->argv); --(pbptr->argc);
 			}
-			++(pbptr->argv); --(pbptr->argc);
 		}
 	}
 	if(pbptr->argc) {
