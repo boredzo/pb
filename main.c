@@ -549,6 +549,13 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 }
 int paste(struct argblock *pbptr) {
 	int retval = 0;
+	ItemCount numItems = 0U;
+	err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
+	OSStatus err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
+	if(err != noErr) {
+		fprintf(stderr, "%s: could not determine how many items are on pasteboard %s: PasteboardGetItemCount returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		return 2;
+	}
 
 	if(!(pbptr->argc)) {
 		if((pbptr->out_fd) < 0)
@@ -559,10 +566,6 @@ int paste(struct argblock *pbptr) {
 			pbptr->itemIndex = 0U;
 		return paste_one(pbptr);
 	} else {
-		ItemCount numItems = 0U;
-		err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
-		//XXX Error-check!
-
 		struct argblock  these_args;
 		struct argblock *these_args_ptr = &these_args;
 		these_args.out_fd    = (pbptr->out_fd    >= 0)  ? pbptr->outfd     : STDOUT_FILENO;
@@ -608,6 +611,9 @@ int paste(struct argblock *pbptr) {
 						if(numericValue == 0U) {
 							fprintf(stderr, "%s: Invalid index %u\n", argv0, numericValue);
 							return 1;
+						} else if(numericValue > numItems) {
+							fprintf(stderr, "%s: Index %u exceeds number of items %u\n", argv0, numericValue, numItems);
+							return 1;
 						} else {
 							if(hasEncounteredIndex)
 								break;
@@ -621,7 +627,7 @@ int paste(struct argblock *pbptr) {
 						break;
 				} else {
 					numericValue = strtoul(*(these_args_ptr->argv), NULL, 10);
-					if(numericValue > 0U) {
+					if((numericValue > 0U) && (numericValue < numItems)) {
 						if(hasEncounteredIndex)
 							break;
 						else {
@@ -629,7 +635,7 @@ int paste(struct argblock *pbptr) {
 							index_cstr = *(these_args_ptr->argv);
 							hasEncounteredIndex = true;
 						}
-					} else if((type = create_UTI_with_cstr(*(these_args_ptr->argv)))) {
+					} else if((numericValue == 0U) && (type = create_UTI_with_cstr(*(these_args_ptr->argv)))) {
 						if(these_args_ptr->type)
 							break;
 						else {
@@ -637,10 +643,19 @@ int paste(struct argblock *pbptr) {
 							these_args_ptr->type = type;
 						}
 					} else if(these_args_ptr->out_fd < 0) {
-						//UTI
-						these_args_ptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *these_args_ptr->argv, kCFStringEncodingUTF8);
+						if(filename)
+							break;
+						else {
+							filename = *(these_args_ptr->argv);
+							pbptr->out_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+						}
 					}
 				}
+
+				int status = paste_one(these_args_ptr);
+				if(status != 0)
+					return status;
+
 				++(these_args_ptr->argv); --(these_args_ptr->argc);
 			}
 		}
@@ -650,29 +665,12 @@ int paste(struct argblock *pbptr) {
 			pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	}
 
-	OSStatus err;
-	ItemCount numItems;
-	err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
-	if(index) {
-		if(err == noErr && index > numItems) {
-			fprintf(stderr, "%s: there are only %u items on pasteboard \"%s\"\n", argv0, numItems, make_pasteboardID_cstr(pbptr));
-			return 1;
-		} else {
-			//Note that if we can't determine how many items there are, we forge ahead anyway.
-			return paste_one(pbptr, index);
-		}
-	} else {
-		if(err != noErr) {
-			fprintf(stderr, "%s: could not determine how many items are on pasteboard %s: PasteboardGetItemCount returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
-			return 2;
-		}
-
-		while(index < numItems) {
-			retval = paste_one(pbptr, ++index);
-			if(retval) {
-				fprintf(stderr, "%s: error pasting item %u from pasteboard \"%s\"\n", argv0, index, make_pasteboardID_cstr(pbptr));
-				break;
-			}
+	while((pbptr->itemIndex) < numItems) {
+		++(pbptr->itemIndex);
+		retval = paste_one(pbptr);
+		if(retval) {
+			fprintf(stderr, "%s: error pasting item %u from pasteboard \"%s\"\n", argv0, index, make_pasteboardID_cstr(pbptr));
+			break;
 		}
 	}
 
