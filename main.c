@@ -660,21 +660,8 @@ int paste(struct argblock *pbptr) {
 			}
 		}
 	}
-	if(pbptr->argc) {
-		if(pbptr->out_fd < 0 || pbptr->out_fd == STDOUT_FILENO)
-			pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	}
 
-	while((pbptr->itemIndex) < numItems) {
-		++(pbptr->itemIndex);
-		retval = paste_one(pbptr);
-		if(retval) {
-			fprintf(stderr, "%s: error pasting item %u from pasteboard \"%s\"\n", argv0, index, make_pasteboardID_cstr(pbptr));
-			break;
-		}
-	}
-
-	return retval;
+	return 0;
 }
 int paste_growl(struct argblock *pbptr) {
 	fputs("paste_growl called\n", stderr);
