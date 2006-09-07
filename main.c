@@ -550,7 +550,6 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 int paste(struct argblock *pbptr) {
 	int retval = 0;
 	ItemCount numItems = 0U;
-	err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 	OSStatus err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 	if(err != noErr) {
 		fprintf(stderr, "%s: could not determine how many items are on pasteboard %s: PasteboardGetItemCount returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
