@@ -470,14 +470,14 @@ pure_data:
 
 	return retval;
 }
-int paste_one(struct argblock *pbptr, UInt32 index) {
+int paste_one(struct argblock *pbptr) {
 	int retval = 0;
 	OSStatus err;
 
 	PasteboardItemID item;
-	err = PasteboardGetItemIdentifier(pbptr->pasteboard, index, &item);
+	err = PasteboardGetItemIdentifier(pbptr->pasteboard, pbptr->itemIndex, &item);
 	if(err != noErr) {
-		fprintf(stderr, "%s: can't find item %lu on pasteboard %s: PasteboardGetItemIdentifier returned %li (%s)\n", argv0, (unsigned long)index, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s: can't find item %lu on pasteboard %s: PasteboardGetItemIdentifier returned %li (%s)\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
 	}
 
@@ -516,9 +516,9 @@ int paste_one(struct argblock *pbptr, UInt32 index) {
 
 	if(err != noErr) {
 		if(err == badPasteboardFlavorErr)
-			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": it does not exist in flavor type \"%s\".\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
+			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": it does not exist in flavor type \"%s\".\n", argv0, pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
 		else
-			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
 		retval = 2;
 	} else {
 		CFIndex length = CFDataGetLength(data);
@@ -663,6 +663,9 @@ int paste(struct argblock *pbptr) {
 	return 0;
 }
 int paste_growl(struct argblock *pbptr) {
+	fprintf(stderr, "%s: paste-growl does not work yet\n", argv0);
+	return 1;
+
 	fputs("paste_growl called\n", stderr);
 	int retval = 0;
 	
@@ -693,7 +696,7 @@ int paste_growl(struct argblock *pbptr) {
 			return 1;
 		} else {
 			//Note that if we can't determine how many items there are, we forge ahead anyway.
-			return paste_one(pbptr, index);
+			return paste_one(pbptr);
 		}
 	} else {
 		if(err != noErr) {
