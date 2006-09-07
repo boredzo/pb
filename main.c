@@ -567,7 +567,7 @@ int paste(struct argblock *pbptr) {
 	} else {
 		struct argblock  these_args;
 		struct argblock *these_args_ptr = &these_args;
-		these_args.out_fd    = (pbptr->out_fd    >= 0)  ? pbptr->outfd     : STDOUT_FILENO;
+		these_args.out_fd    = (pbptr->out_fd    >= 0)  ? pbptr->out_fd    : STDOUT_FILENO;
 		these_args.itemIndex = (pbptr->itemIndex >  0U) ? pbptr->itemIndex : 1U;
 		these_args.type      = (pbptr->type)            ? pbptr->type      : kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
 
