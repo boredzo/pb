@@ -565,11 +565,14 @@ int paste(struct argblock *pbptr) {
 			pbptr->itemIndex = 0U;
 		return paste_one(pbptr);
 	} else {
-		struct argblock  these_args;
+		struct argblock  these_args     = *pbptr;
 		struct argblock *these_args_ptr = &these_args;
-		these_args.out_fd    = (pbptr->out_fd    >= 0)  ? pbptr->out_fd    : STDOUT_FILENO;
-		these_args.itemIndex = (pbptr->itemIndex >  0U) ? pbptr->itemIndex : 1U;
-		these_args.type      = (pbptr->type)            ? pbptr->type      : kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
+		if(these_args.out_fd < 0)
+			these_args.out_fd    = STDOUT_FILENO;
+		if(these_args.itemIndex == 0U)
+			these_args.itemIndex = 1U;
+		if(!these_args.type)
+			these_args.type      = kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
 
 		const char *filename = NULL;
 		const char *type_cstr = NULL;
