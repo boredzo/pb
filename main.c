@@ -573,38 +573,39 @@ int paste(struct argblock *pbptr) {
 		const char *type_cstr = NULL;
 		CFStringRef type = NULL;
 		const char *index_cstr = NULL;
-		while(these_args_ptr->argc > 0) {
+		while(pbptr->argc > 0) {
 			//Any options provided before the paste command are the default values for options after the paste command. If we encounter another value on the command line, use that.
 			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
 			Boolean hasEncounteredIndex = false;
 			UInt32 numericValue;
 
-			while((these_args_ptr->argc > 0) && !(filename && type_cstr && index_cstr)) {
+			while((pbptr->argc > 0) && !(filename && type_cstr && index_cstr)) {
+				fprintf(stderr, "argc: %i; *argv: %s\n", (pbptr->argc), *(pbptr->argv));
 				//--out-file=
 				//00000000011
 				//12345678901
-				if(strncmp(*(these_args_ptr->argv), "--out-file=", 11) == 0) {
+				if(strncmp(*(pbptr->argv), "--out-file=", 11) == 0) {
 					if(!filename)
-						filename = (*(these_args_ptr->argv)) + 11;
+						filename = (*(pbptr->argv)) + 11;
 					else
 						break;
 				//--type=
 				//0000000
 				//1234567
-				} else if(strncmp(*(these_args_ptr->argv), "--type=", 7) == 0) {
+				} else if(strncmp(*(pbptr->argv), "--type=", 7) == 0) {
 					if(!type) {
-						type = create_UTI_with_cstr(*(these_args_ptr->argv) + 7);
-						these_args_ptr->flags.infer_translate_newlines = false;
+						type = create_UTI_with_cstr(*(pbptr->argv) + 7);
+						pbptr->flags.infer_translate_newlines = false;
 					} else
 						break;
 				//--index=
 				//00000000
 				//12345678
-				} else if(strncmp(*(these_args_ptr->argv), "--index=", 8) == 0) {
+				} else if(strncmp(*(pbptr->argv), "--index=", 8) == 0) {
 					if(!index_cstr) {
-						index_cstr = (*(these_args_ptr->argv)) + 8;
-						numericValue = strtoul(*(these_args_ptr->argv) + 8, NULL, 10);
+						index_cstr = (*(pbptr->argv)) + 8;
+						numericValue = strtoul(*(pbptr->argv) + 8, NULL, 10);
 						if(numericValue == 0U) {
 							fprintf(stderr, "%s: Invalid index %u\n", argv0, numericValue);
 							return 1;
@@ -615,44 +616,45 @@ int paste(struct argblock *pbptr) {
 							if(hasEncounteredIndex)
 								break;
 							else {
-								these_args_ptr->itemIndex = numericValue;
-								index_cstr = *(these_args_ptr->argv);
+								pbptr->itemIndex = numericValue;
+								index_cstr = *(pbptr->argv);
 								hasEncounteredIndex = true;
 							}
 						}
 					} else
 						break;
 				} else {
-					numericValue = strtoul(*(these_args_ptr->argv), NULL, 10);
+					numericValue = strtoul(*(pbptr->argv), NULL, 10);
 					if((numericValue > 0U) && (numericValue < numItems)) {
 						if(hasEncounteredIndex)
 							break;
 						else {
-							these_args_ptr->itemIndex = numericValue;
-							index_cstr = *(these_args_ptr->argv);
+							pbptr->itemIndex = numericValue;
+							index_cstr = *(pbptr->argv);
 							hasEncounteredIndex = true;
 						}
-					} else if((numericValue == 0U) && (type = create_UTI_with_cstr(*(these_args_ptr->argv)))) {
-						if(these_args_ptr->type)
+					} else if((numericValue == 0U) && (type = create_UTI_with_cstr(*(pbptr->argv)))) {
+						if(pbptr->type)
 							break;
 						else {
-							type_cstr = *(these_args_ptr->argv);
-							these_args_ptr->type = type;
-							these_args_ptr->flags.infer_translate_newlines = false;
+							type_cstr = *(pbptr->argv);
+							pbptr->type = type;
+							pbptr->flags.infer_translate_newlines = false;
 						}
-					} else if(these_args_ptr->out_fd < 0) {
+					} else if(pbptr->out_fd < 0) {
 						if(filename)
 							break;
 						else {
-							filename = *(these_args_ptr->argv);
-							these_args_ptr->out_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+							filename = *(pbptr->argv);
+							pbptr->out_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 						}
 					}
 				}
 
-				++(these_args_ptr->argv); --(these_args_ptr->argc);
+				++(pbptr->argv); --(pbptr->argc);
 			}
 
+			these_args = *pbptr;
 			if(these_args_ptr->out_fd < 0)
 				these_args_ptr->out_fd    = STDOUT_FILENO;
 			if(!these_args_ptr->type)
@@ -664,15 +666,15 @@ int paste(struct argblock *pbptr) {
 			if(status != 0)
 				return status;
 
-			if((these_args_ptr->out_fd >= 0) && (these_args_ptr->out_fd != STDOUT_FILENO)) {
-				close(these_args_ptr->out_fd);
-				these_args_ptr->out_fd = -1;
+			if((pbptr->out_fd >= 0) && (pbptr->out_fd != STDOUT_FILENO)) {
+				close(pbptr->out_fd);
+				pbptr->out_fd = -1;
 			}
-			these_args_ptr->type      = NULL;
-			++these_args_ptr->itemIndex;
 			filename = NULL;
+			pbptr->type = NULL;
+			++pbptr->itemIndex;
 
-			++(these_args_ptr->argv); --(these_args_ptr->argc);
+			++(pbptr->argv); --(pbptr->argc);
 		}
 	}
 
