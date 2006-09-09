@@ -14,4 +14,10 @@ enum option_comparison_result {
 };
 
 //option_name_char can be 0, or option_name can be NULL. Doing both will result in option_comparison_error.
+/*
+ *option_arg_optional    out_option_arg    Result: Option argument is…
+ *false                  non-NULL          required
+ *true                   non-NULL          optional
+ *(whatever)             NULL              forbidden
+ */
 enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, bool option_arg_optional, const char **out_option_arg);
