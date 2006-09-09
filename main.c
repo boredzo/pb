@@ -171,8 +171,8 @@ Boolean testarg(const char *a, const char *b, const char **param) {
 static inline void initpb(struct argblock *pbptr) {
 	pbptr->proc = NULL;
 
-	pbptr->in_fd  =  STDIN_FILENO;
-	pbptr->out_fd = STDOUT_FILENO;
+	pbptr->in_fd  = -1;
+	pbptr->out_fd = -1;
 
 	pbptr->pasteboard                     = NULL;
 
@@ -562,31 +562,25 @@ int paste(struct argblock *pbptr) {
 		if(!(pbptr->type))
 			pbptr->type = CFRetain(kUTTypeUTF8PlainText);
 		if((pbptr->itemIndex) == 0U)
-			pbptr->itemIndex = 0U;
+			pbptr->itemIndex = 1U;
 		return paste_one(pbptr);
 	} else {
+		UInt32 index = 1U;
 		struct argblock  these_args     = *pbptr;
 		struct argblock *these_args_ptr = &these_args;
-		if(these_args.out_fd < 0)
-			these_args.out_fd    = STDOUT_FILENO;
-		if(these_args.itemIndex == 0U)
-			these_args.itemIndex = 1U;
-		if(!these_args.type)
-			these_args.type      = kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
 
 		const char *filename = NULL;
 		const char *type_cstr = NULL;
 		CFStringRef type = NULL;
 		const char *index_cstr = NULL;
-		while(pbptr->argc) {
+		while(these_args_ptr->argc > 0) {
 			//Any options provided before the paste command are the default values for options after the paste command. If we encounter another value on the command line, use that.
 			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
-			++these_args.itemIndex;
 			Boolean hasEncounteredIndex = false;
 			UInt32 numericValue;
 
-			while((these_args_ptr->argc) && !(filename && type_cstr && index_cstr)) {
+			while((these_args_ptr->argc > 0) && !(filename && type_cstr && index_cstr)) {
 				//--out-file=
 				//00000000011
 				//12345678901
@@ -599,9 +593,10 @@ int paste(struct argblock *pbptr) {
 				//0000000
 				//1234567
 				} else if(strncmp(*(these_args_ptr->argv), "--type=", 7) == 0) {
-					if(!type)
+					if(!type) {
 						type = create_UTI_with_cstr(*(these_args_ptr->argv) + 7);
-					else
+						these_args_ptr->flags.infer_translate_newlines = false;
+					} else
 						break;
 				//--index=
 				//00000000
@@ -643,23 +638,41 @@ int paste(struct argblock *pbptr) {
 						else {
 							type_cstr = *(these_args_ptr->argv);
 							these_args_ptr->type = type;
+							these_args_ptr->flags.infer_translate_newlines = false;
 						}
 					} else if(these_args_ptr->out_fd < 0) {
 						if(filename)
 							break;
 						else {
 							filename = *(these_args_ptr->argv);
-							pbptr->out_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+							these_args_ptr->out_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 						}
 					}
 				}
 
-				int status = paste_one(these_args_ptr);
-				if(status != 0)
-					return status;
-
 				++(these_args_ptr->argv); --(these_args_ptr->argc);
 			}
+
+			if(these_args_ptr->out_fd < 0)
+				these_args_ptr->out_fd    = STDOUT_FILENO;
+			if(!these_args_ptr->type)
+				these_args_ptr->type      = kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
+			if(!these_args_ptr->itemIndex)
+				these_args_ptr->itemIndex = 1U;
+
+			int status = paste_one(these_args_ptr);
+			if(status != 0)
+				return status;
+
+			if((these_args_ptr->out_fd >= 0) && (these_args_ptr->out_fd != STDOUT_FILENO)) {
+				close(these_args_ptr->out_fd);
+				these_args_ptr->out_fd = -1;
+			}
+			these_args_ptr->type      = NULL;
+			++these_args_ptr->itemIndex;
+			filename = NULL;
+
+			++(these_args_ptr->argv); --(these_args_ptr->argc);
 		}
 	}
 
