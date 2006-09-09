@@ -5,11 +5,6 @@
 #include <stdio.h>
 
 enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, bool option_arg_optional, const char **out_option_arg) {
-	if(!(option_name_char && option_name)) {
-		fprintf(stderr, "compare_argument: internal error: compare_argument did not receive an option name to compare against; argv was %p and first element was %p/%s (please tell the developer)\n", argv, argv ? *argv : NULL, argv ? *argv : NULL);
-		return option_comparison_error;
-	}
-
 	if(!argv) {
 		fprintf(stderr, "compare_argument: internal error: compare_argument received an argv of NULL (please tell the developer)\n");
 		return option_comparison_error;
