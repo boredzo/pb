@@ -8,23 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		07064EAB06F03B1F0027C06E /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 07064EAA06F03B1F0027C06E /* Carbon.framework */; };
+		079445FA0AB2D63A00EBD8D7 /* compare_argument.c in Sources */ = {isa = PBXBuildFile; fileRef = 079445F80AB2D63A00EBD8D7 /* compare_argument.c */; };
 		8DD76F770486A8DE00D96B5E /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* main.c */; settings = {ATTRIBUTES = (); }; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		8DD76F7B0486A8DE00D96B5E /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 8;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		07064EAA06F03B1F0027C06E /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
+		079445F80AB2D63A00EBD8D7 /* compare_argument.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = compare_argument.c; sourceTree = "<group>"; };
+		079445F90AB2D63A00EBD8D7 /* compare_argument.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = compare_argument.h; sourceTree = "<group>"; };
 		08FB7796FE84155DC02AAC07 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		09AB6884FE841BABC02AAC07 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
 		8DD76F7E0486A8DE00D96B5E /* pb */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pb; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -57,6 +48,8 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				079445F90AB2D63A00EBD8D7 /* compare_argument.h */,
+				079445F80AB2D63A00EBD8D7 /* compare_argument.c */,
 				08FB7796FE84155DC02AAC07 /* main.c */,
 			);
 			name = Source;
@@ -96,7 +89,6 @@
 			buildPhases = (
 				8DD76F760486A8DE00D96B5E /* Sources */,
 				8DD76F780486A8DE00D96B5E /* Frameworks */,
-				8DD76F7B0486A8DE00D96B5E /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -129,6 +121,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8DD76F770486A8DE00D96B5E /* main.c in Sources */,
+				079445FA0AB2D63A00EBD8D7 /* compare_argument.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
