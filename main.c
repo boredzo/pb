@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include "GrowlDefines.h"
+#include "compare_argument.h"
 
 /*	To-do:
  *	- Add --file in copy and paste subcmds
@@ -12,10 +13,6 @@
  *	- Collapse in_fd, out_fd to one FD.
  *	- Hook up convert_encodings.
  *	- Find a way to not assume UTF-8 I/O.
- *	- Add function: Boolean compare_argument(const char arg_name_char, const char *arg_name, const char **argv, const char **out_arg_value)
- *	  Example: compare_argument('o', 'out-file', pbptr->argv, &filename)
- *	  Tests whether an argument matches a given name, and if it does and out_arg_value is not NULL, returns the value for the argument (either the string after "=" in argv[0], or argv[1]).
- *	  Replaces test_arg.
  */
 
 struct argblock {
@@ -578,34 +575,29 @@ int paste(struct argblock *pbptr) {
 			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
 			Boolean hasEncounteredIndex = false;
+			Boolean has_encountered_translate_newlines = false;
 			UInt32 numericValue;
 
 			while((pbptr->argc > 0) && !(filename && type_cstr && index_cstr)) {
 				fprintf(stderr, "argc: %i; *argv: %s\n", (pbptr->argc), *(pbptr->argv));
-				//--out-file=
-				//00000000011
-				//12345678901
-				if(strncmp(*(pbptr->argv), "--out-file=", 11) == 0) {
+				const char *option_arg = NULL;
+
+				if(compare_argument('f', "file", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
 					if(!filename)
-						filename = (*(pbptr->argv)) + 11;
+						filename = option_arg;
 					else
 						break;
-				//--type=
-				//0000000
-				//1234567
-				} else if(strncmp(*(pbptr->argv), "--type=", 7) == 0) {
+				} else if(compare_argument('t', "type", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
 					if(!type) {
-						type = create_UTI_with_cstr(*(pbptr->argv) + 7);
-						pbptr->flags.infer_translate_newlines = false;
+						type = create_UTI_with_cstr(option_arg);
+						if(!has_encountered_translate_newlines)
+							pbptr->flags.infer_translate_newlines = true;
 					} else
 						break;
-				//--index=
-				//00000000
-				//12345678
-				} else if(strncmp(*(pbptr->argv), "--index=", 8) == 0) {
+				} else if(compare_argument('i', "index", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
 					if(!index_cstr) {
-						index_cstr = (*(pbptr->argv)) + 8;
-						numericValue = strtoul(*(pbptr->argv) + 8, NULL, 10);
+						index_cstr = option_arg;
+						numericValue = strtoul(index_cstr, NULL, 10);
 						if(numericValue == 0U) {
 							fprintf(stderr, "%s: Invalid index %u\n", argv0, numericValue);
 							return 1;
@@ -617,12 +609,19 @@ int paste(struct argblock *pbptr) {
 								break;
 							else {
 								pbptr->itemIndex = numericValue;
-								index_cstr = *(pbptr->argv);
 								hasEncounteredIndex = true;
 							}
 						}
 					} else
 						break;
+				} else if(compare_argument(0, "translate-newlines", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
+					has_encountered_translate_newlines = true;
+					pbptr->infer_translate_newlines = false;
+					pbptr->translate_newlines       = true;
+				} else if(compare_argument(0, "no-translate-newlines", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
+					has_encountered_translate_newlines = true;
+					pbptr->infer_translate_newlines = false;
+					pbptr->translate_newlines       = false;
 				} else {
 					numericValue = strtoul(*(pbptr->argv), NULL, 10);
 					if((numericValue > 0U) && (numericValue < numItems)) {
