@@ -574,7 +574,7 @@ int paste(struct argblock *pbptr) {
 			//Any options provided before the paste command are the default values for options after the paste command. If we encounter another value on the command line, use that.
 			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
-			Boolean hasEncounteredIndex = false;
+			Boolean has_encountered_index = false;
 			Boolean has_encountered_translate_newlines = false;
 			UInt32 numericValue;
 
@@ -605,32 +605,32 @@ int paste(struct argblock *pbptr) {
 							fprintf(stderr, "%s: Index %u exceeds number of items %u\n", argv0, numericValue, numItems);
 							return 1;
 						} else {
-							if(hasEncounteredIndex)
+							if(has_encountered_index)
 								break;
 							else {
 								pbptr->itemIndex = numericValue;
-								hasEncounteredIndex = true;
+								has_encountered_index = true;
 							}
 						}
 					} else
 						break;
 				} else if(compare_argument(0, "translate-newlines", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
 					has_encountered_translate_newlines = true;
-					pbptr->infer_translate_newlines = false;
-					pbptr->translate_newlines       = true;
+					pbptr->flags.infer_translate_newlines = false;
+					pbptr->flags.translate_newlines       = true;
 				} else if(compare_argument(0, "no-translate-newlines", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
 					has_encountered_translate_newlines = true;
-					pbptr->infer_translate_newlines = false;
-					pbptr->translate_newlines       = false;
+					pbptr->flags.infer_translate_newlines = false;
+					pbptr->flags.translate_newlines       = false;
 				} else {
 					numericValue = strtoul(*(pbptr->argv), NULL, 10);
 					if((numericValue > 0U) && (numericValue < numItems)) {
-						if(hasEncounteredIndex)
+						if(has_encountered_index)
 							break;
 						else {
 							pbptr->itemIndex = numericValue;
 							index_cstr = *(pbptr->argv);
-							hasEncounteredIndex = true;
+							has_encountered_index = true;
 						}
 					} else if((numericValue == 0U) && (type = create_UTI_with_cstr(*(pbptr->argv)))) {
 						if(pbptr->type)
