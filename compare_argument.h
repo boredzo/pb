@@ -19,4 +19,4 @@ enum option_comparison_result {
  *true                   non-NULL          optional
  *(whatever)             NULL              forbidden
  */
-enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, bool option_arg_optional, const char **out_option_arg);
+enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, const char ***out_argv, bool option_arg_optional, const char **out_option_arg);
