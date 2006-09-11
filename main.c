@@ -376,7 +376,7 @@ int copy(struct argblock *pbptr) {
 	CFStringRef string;
 	CFDataRef data = NULL;
 	if(pbptr->type == NULL) {
-		//Assume it's UTF-8. Convert it to UTF-16.
+		//Assume it's UTF-8. Convert it to UTF-16 with BOM.
 		string = CFStringCreateWithBytes(kCFAllocatorDefault, (const unsigned char *)buf, total_size, kCFStringEncodingUTF8, /*isExternalRepresentation*/ false);
 		if(string == NULL) {
 			//So much for that. Call it MacRoman and copy the pure bytes.
