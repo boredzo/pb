@@ -587,8 +587,8 @@ int paste(struct argblock *pbptr) {
 					else
 						break;
 				} else if(compare_argument('t', "type", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
-					if(!type) {
-						type = create_UTI_with_cstr(option_arg);
+					if(!pbptr->type) {
+						pbptr->type = create_UTI_with_cstr(option_arg);
 						if(!has_encountered_translate_newlines)
 							pbptr->flags.infer_translate_newlines = true;
 					} else
@@ -621,6 +621,9 @@ int paste(struct argblock *pbptr) {
 					has_encountered_translate_newlines = true;
 					pbptr->flags.infer_translate_newlines = false;
 					pbptr->flags.translate_newlines       = false;
+				} else if(*(*(pbptr->argv)) == '-') {
+					fprintf(stderr, "%s: Internal error: Unrecognized argument “%s”\n", argv0, *(pbptr->argv));
+					return 1;
 				} else {
 					numericValue = strtoul(*(pbptr->argv), NULL, 10);
 					if((numericValue > 0U) && (numericValue < numItems)) {
@@ -640,23 +643,18 @@ int paste(struct argblock *pbptr) {
 							if(!has_encountered_translate_newlines)
 								pbptr->flags.infer_translate_newlines = true;
 						}
-					} else if(pbptr->out_fd < 0) {
+					} else {
 						if(filename)
 							break;
-						else {
+						else
 							filename = *((pbptr->argv)++);
-							pbptr->out_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-						}
-					} else {
-						fprintf(stderr, "%s: Internal error: Unrecognized argument “%s”\n", argv0, *(pbptr->argv));
-						return 1;
 					}
 				}
 			}
 
 			these_args = *pbptr;
 			if(these_args_ptr->out_fd < 0)
-				these_args_ptr->out_fd    = STDOUT_FILENO;
+				these_args_ptr->out_fd    = filename ? open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644) : STDOUT_FILENO;
 			if(!these_args_ptr->type)
 				these_args_ptr->type      = kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
 			if(!these_args_ptr->itemIndex)
