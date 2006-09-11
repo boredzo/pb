@@ -1,10 +1,10 @@
 #include <stdbool.h>
 
 enum option_comparison_result {
-	option_comparison_optargunexpected = -3, //User said --file=foo.txt, but you weren't expecting an argument to --file
-	option_comparison_notanopt = -2,
-	option_comparison_error = -1,
-	option_comparison_nomatch,
+	option_comparison_optargunexpected = -3 << 16, //User said --file=foo.txt, but you weren't expecting an argument to --file
+	option_comparison_notanopt = -2 << 16,
+	option_comparison_error = -1 << 16,
+	option_comparison_nomatch = 0,
 	//The following results indicate that a flag value was matched.
 	option_comparison_shortopt,    //-f
 	option_comparison_longopt,     //--file
