@@ -19,10 +19,10 @@ enum option_comparison_result compare_argument(const char option_name_char, cons
 	enum option_comparison_result result = option_comparison_error;
 	const char **orig_argv = argv;
 
-	if(*arg != '-') {
+	if(*(arg++) != '-') {
 		//Not an option (options begin with -).
 		result = option_comparison_notanopt;
-	} else if(*++arg != '-') {
+	} else {
 		if(*arg == '\0') {
 			//Special filename for stdio (-).
 			result = option_comparison_stdio;
