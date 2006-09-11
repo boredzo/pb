@@ -71,6 +71,7 @@ enum option_comparison_result compare_argument(const char option_name_char, cons
 							}
 							*out_option_arg = arg;
 						}
+						result = option_comparison_longopt;
 					} else {
 						//No match.
 						result = option_comparison_nomatch;
@@ -93,6 +94,7 @@ enum option_comparison_result compare_argument(const char option_name_char, cons
 				}
 				*out_option_arg = arg;
 			}
+			result = option_comparison_shortopt;
 		}
 	}
 
