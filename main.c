@@ -576,25 +576,27 @@ int paste(struct argblock *pbptr) {
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
 			Boolean has_encountered_index = false;
 			Boolean has_encountered_translate_newlines = false;
+			unsigned num_args_consumed = 0U;
 			UInt32 numericValue;
 
 			while((pbptr->argc > 0) && !(filename && type_cstr && index_cstr)) {
 				fprintf(stderr, "argc: %i; *argv: %s\n", (pbptr->argc), *(pbptr->argv));
 				const char *option_arg = NULL;
 
-				if(compare_argument('f', "file", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
+				if(compare_argument('f', "file", pbptr->argv, &pbptr->argv, &num_args_consumed, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
+					fprintf(stderr, "Got -f: %s\n", option_arg);
 					if(!filename)
 						filename = option_arg;
 					else
 						break;
-				} else if(compare_argument('t', "type", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
+				} else if(compare_argument('t', "type", pbptr->argv, &pbptr->argv, &num_args_consumed, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
 					if(!type) {
 						type = create_UTI_with_cstr(option_arg);
 						if(!has_encountered_translate_newlines)
 							pbptr->flags.infer_translate_newlines = true;
 					} else
 						break;
-				} else if(compare_argument('i', "index", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
+				} else if(compare_argument('i', "index", pbptr->argv, &pbptr->argv, &num_args_consumed, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
 					if(!index_cstr) {
 						index_cstr = option_arg;
 						numericValue = strtoul(index_cstr, NULL, 10);
@@ -614,11 +616,11 @@ int paste(struct argblock *pbptr) {
 						}
 					} else
 						break;
-				} else if(compare_argument(0, "translate-newlines", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
+				} else if(compare_argument(0, "translate-newlines", pbptr->argv, &pbptr->argv, &num_args_consumed, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
 					has_encountered_translate_newlines = true;
 					pbptr->flags.infer_translate_newlines = false;
 					pbptr->flags.translate_newlines       = true;
-				} else if(compare_argument(0, "no-translate-newlines", pbptr->argv, &pbptr->argv, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
+				} else if(compare_argument(0, "no-translate-newlines", pbptr->argv, &pbptr->argv, &num_args_consumed, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
 					has_encountered_translate_newlines = true;
 					pbptr->flags.infer_translate_newlines = false;
 					pbptr->flags.translate_newlines       = false;
@@ -646,11 +648,15 @@ int paste(struct argblock *pbptr) {
 						else {
 							filename = *(pbptr->argv);
 							pbptr->out_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+							fprintf(stderr, "%s: Opened %s for writing\n", argv0, filename);
 						}
+					} else {
+						fprintf(stderr, "%s: Internal error: Unrecognized argument “%s”\n", argv0, *(pbptr->argv));
+						return 1;
 					}
 				}
 
-				++(pbptr->argv); --(pbptr->argc);
+				pbptr->argc -= num_args_consumed;
 			}
 
 			these_args = *pbptr;

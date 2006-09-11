@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, const char ***out_argv, bool option_arg_optional, const char **out_option_arg) {
+enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, const char ***out_argv, unsigned *out_args_consumed, bool option_arg_optional, const char **out_option_arg) {
 	if(!argv) {
 		fprintf(stderr, "compare_argument: internal error: compare_argument received an argv of NULL (please tell the developer)\n");
 		return option_comparison_error;
@@ -96,8 +96,12 @@ enum option_comparison_result compare_argument(const char option_name_char, cons
 		}
 	}
 
-	if(out_argv) {
-		*out_argv = (result > option_comparison_nomatch) ? ++argv : orig_argv;
-	}
+	if(out_args_consumed || out_argv)
+		argv = (result > option_comparison_nomatch) ? ++argv : orig_argv;
+	if(out_argv)
+		*out_argv = argv;
+	if(out_args_consumed)
+		*out_args_consumed = argv - orig_argv;
+
 	return result;
 }

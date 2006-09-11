@@ -26,5 +26,6 @@ enum option_comparison_result {
  *If out_option_arg is NULL, then an option argument is not expected and will not be consumed if present.
  *
  *If out_argv is not NULL, then *out_argv will be set to the sub-array of argv that is after both the option name and the option argument (if any). For example, if the option argument is in argv[1] (see above), then *out_argv will be set to &argv[2].
+ *If out_args_consumed is not NULL, then *out_args_consumed will be set to the number of args consumed. For example, if argv[0] is a match for --file and argv[1] is consumed as the option argument, then *out_args_consumed will be 2.
  */
-enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, const char ***out_argv, bool option_arg_optional, const char **out_option_arg);
+enum option_comparison_result compare_argument(const char option_name_char, const char *option_name, const char **argv, const char ***out_argv, unsigned *out_args_consumed, bool option_arg_optional, const char **out_option_arg);
