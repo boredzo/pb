@@ -6,10 +6,10 @@ enum option_comparison_result {
 	option_comparison_error = -1 << 16,
 	option_comparison_nomatch = 0,
 	//The following results indicate that a flag value was matched.
-	option_comparison_shortopt,    //-f
-	option_comparison_longopt,     //--file
-	option_comparison_eitheropt,   //-f or --file (bit mask: short | long)
-	option_comparison_stdio,       //-
+	option_comparison_shortopt,  //-f
+	option_comparison_longopt,   //--file
+	option_comparison_eitheropt, //-f or --file (bit mask: short | long)
+	option_comparison_stdio,     //-
 	option_comparison_endofflags //--
 };
 
