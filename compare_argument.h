@@ -10,7 +10,7 @@ enum option_comparison_result {
 	option_comparison_longopt,     //--file
 	option_comparison_eitheropt,   //-f or --file (bit mask: short | long)
 	option_comparison_stdio,       //-
-	option_comparison_endofoptions //--
+	option_comparison_endofflags //--
 };
 
 /*

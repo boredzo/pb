@@ -29,7 +29,7 @@ enum option_comparison_result compare_argument(const char option_name_char, cons
 		} else if(*arg == '-') {
 			if(*++arg == '\0') {
 				//Options terminator (--).
-				result = option_comparison_endofoptions;
+				result = option_comparison_endofflags;
 			} else {
 				if(!option_name) {
 					//We're not expecting a long option, so fail the match immediately.
