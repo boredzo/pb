@@ -522,7 +522,7 @@ int paste_one(struct argblock *pbptr) {
 		const unsigned char *rptr = CFDataGetBytePtr(data);
 		void *buf = NULL;
 		if(pbptr->flags.infer_translate_newlines)
-			pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, kUTTypeText);
+			pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, MacRoman_UTI);
 		if(pbptr->flags.translate_newlines) {
 			buf = malloc(length);
 			unsigned char *wptr = buf;
