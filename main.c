@@ -322,34 +322,16 @@ int copy(struct argblock *pbptr) {
 
 	char *buf = NULL;
 	size_t total_size = 0U;
-	Boolean mapped = false;
-	if(pbptr->in_fd == STDIN_FILENO) {
-		enum { increment = 1048576U };
-		ssize_t amt_read = 0;
-		size_t bufsize = 0U;
-		do {
-			if(total_size % increment == 0U)
-				buf = realloc(buf, bufsize += increment);
-			total_size += amt_read = read(pbptr->in_fd, &buf[total_size], bufsize - (total_size % increment));
-		} while(amt_read);
-		printf("read %zu bytes from stdin\n", total_size);
-	} else {
-		//This is a regular file. Map it.
-		struct stat sb;
-		int retval = fstat(pbptr->in_fd, &sb);
-		if(retval) {
-			fprintf(stderr, "%s copy: could not perform fstat to determine file size: %s\n", argv0, strerror(errno));
-			return 2;
-		}
-		total_size = sb.st_size;
-		buf = mmap(NULL, total_size, PROT_READ | PROT_WRITE, MAP_FILE, pbptr->in_fd, /*offset*/ 0);
-		if(buf == NULL) {
-			fprintf(stderr, "%s copy: could not mmap %zu bytes of file: %s\n", argv0, total_size, strerror(errno));
-			return 2;
-		}
-		mapped = true;
-		printf("mapped %zu bytes from file\n", total_size);
-	}
+
+	enum { increment = 1048576U };
+	ssize_t amt_read = 0;
+	size_t bufsize = 0U;
+	do {
+		if(total_size % increment == 0U)
+			buf = realloc(buf, bufsize += increment);
+		total_size += amt_read = read(pbptr->in_fd, &buf[total_size], bufsize - (total_size % increment));
+	} while(amt_read);
+	printf("read %zu bytes\n", total_size);
 
 	OSStatus err;
 	int retval = 0;
@@ -454,11 +436,7 @@ pure_data:
 	}
 
 	CFRelease(data);
-
-	if(mapped)
-		munmap(buf, total_size);
-	else
-		free(buf);
+	free(buf);
 
 	if(err != noErr) {
 		fprintf(stderr, "%s copy: could not copy to pasteboard %s because PasteboardPutItemFlavor returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), err);
