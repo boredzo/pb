@@ -331,7 +331,6 @@ int copy(struct argblock *pbptr) {
 			buf = realloc(buf, bufsize += increment);
 		total_size += amt_read = read(pbptr->in_fd, &buf[total_size], bufsize - (total_size % increment));
 	} while(amt_read);
-	printf("read %zu bytes\n", total_size);
 
 	OSStatus err;
 	int retval = 0;
