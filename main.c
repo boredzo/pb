@@ -747,7 +747,7 @@ int help(struct argblock *pbptr) {
 	return 0;
 }
 int version(struct argblock *pbptr) {
-	printf("pb version 0.1\n"
+	printf("pb version 1.0b1\n"
 		   "copyright 2004 Mac-arena the Bored Zo\n"
 		   "interface to the Pasteboard Manager:\n"
 		   "read and write pasteboards (including the clipboard)\n"
