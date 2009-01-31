@@ -148,9 +148,9 @@ int main(int argc, const char **argv) {
 		CFRelease(pb.pasteboardID);
 	if(pb.type)
 		CFRelease(pb.type);
-	if(pb.in_fd > 2)
+	if(pb.in_fd > -1)
 		close(pb.in_fd);
-	if(pb.out_fd > 2)
+	if(pb.out_fd > -1)
 		close(pb.out_fd);
 
 	pb_deallocateall();
