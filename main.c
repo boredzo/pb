@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include "GrowlDefines.h"
 #include "compare_argument.h"
 
 /*	To-do:
@@ -68,7 +67,6 @@ int parsearg(const char *arg, struct argblock *pbptr);
 
 int  copy(struct argblock *pbptr);
 int paste(struct argblock *pbptr);
-int paste_growl(struct argblock *pbptr);
 int count(struct argblock *pbptr);
 int  list(struct argblock *pbptr);
 int clear(struct argblock *pbptr);
@@ -210,7 +208,6 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 				pbptr->flags.translate_newlines       = true;
 			} else if(testarg(arg, "copy", NULL)
 				 || testarg(arg, "paste", NULL)
-				 || testarg(arg, "paste-growl", NULL)
 				 || testarg(arg, "clear", NULL)
 				 || testarg(arg, "count", NULL)
 				 || testarg(arg, "list", NULL)
@@ -232,8 +229,6 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 					pbptr->proc = copy;
 				else if(testarg(arg, "paste", NULL))
 					pbptr->proc = paste;
-				else if(testarg(arg, "paste-growl", NULL))
-					pbptr->proc = paste_growl;
 				else if(testarg(arg, "clear", NULL))
 					pbptr->proc = clear;
 				else if(testarg(arg, "count", NULL))
@@ -680,177 +675,6 @@ int paste(struct argblock *pbptr) {
 	}
 
 	return 0;
-}
-int paste_growl(struct argblock *pbptr) {
-	fprintf(stderr, "%s: paste-growl does not work yet\n", argv0);
-	return 1;
-
-	fputs("paste_growl called\n", stderr);
-	int retval = 0;
-	
-	UInt32 index = 0U; //Index of the item to paste.
-	
-	if(pbptr->argc)
-		if(index = strtoul(*(pbptr->argv), NULL, 0)) {
-			++(pbptr->argv); --(pbptr->argc);
-		}
-	if(pbptr->argc)
-		if(strchr(*(pbptr->argv), '.')) {
-			if(pbptr->type != NULL) {
-				//This is a filename.
-				pbptr->out_fd = open(*(pbptr->argv), O_WRONLY | O_CREAT, 0644);
-			} else {
-				//UTI.
-				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, *pbptr->argv, kCFStringEncodingUTF8);
-			}
-			++(pbptr->argv); --(pbptr->argc);
-		}
-
-	OSStatus err;
-	ItemCount numItems;
-	err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
-	if(index) {
-		if(err == noErr && index > numItems) {
-			fprintf(stderr, "%s: there are only %u items on pasteboard \"%s\"\n", argv0, numItems, make_pasteboardID_cstr(pbptr));
-			return 1;
-		} else {
-			//Note that if we can't determine how many items there are, we forge ahead anyway.
-			return paste_one(pbptr);
-		}
-	} else {
-		if(err != noErr) {
-			fprintf(stderr, "%s: could not determine how many items are on pasteboard %s: PasteboardGetItemCount returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
-			return 2;
-		}
-		
-		CFStringRef title = NULL;
-		CFStringRef desc = NULL;
-		CFDataRef imageData = NULL;
-
-		while((++index <= numItems) && !(imageData && desc)) {
-			PasteboardItemID item;
-			err = PasteboardGetItemIdentifier(pbptr->pasteboard, index, &item);
-			if(err != noErr) {
-				fprintf(stderr, "%s: can't find item %lu on pasteboard %s: PasteboardGetItemIdentifier returned %li (%s)\n", argv0, (unsigned long)index, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
-				return 2;
-			}
-
-			CFDataRef stringData = NULL;
-			CFStringEncoding stringEncoding = 0;
-
-			if(!desc) {
-				//First, UTF-16.
-				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF16PlainText, &stringData);
-				if(err == noErr)
-					stringEncoding = kCFStringEncodingUnicode;
-				else {
-					//Failing that, UTF-8.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeUTF8PlainText, &stringData);
-					if(err == noErr)
-						stringEncoding = kCFStringEncodingUTF8;
-					else {
-						//Finally, MacRoman.
-						err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, MacRoman_UTI, &stringData);
-						if(err == noErr)
-							stringEncoding = kCFStringEncodingMacRoman;
-					}
-				} 
-			}
-			if(!imageData) {
-				//First, vector formats, since they work well at any size.
-
-				//First, PDF.
-				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypePDF, &imageData);
-				if(err != noErr) {
-					//Failing that, PICT.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypePICT, &imageData);
-				}
-
-				//OK, that won't work. Try raster formats now.
-
-				//First, IconFamily.
-				if(err != noErr) {
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeAppleICNS, &imageData);
-				}
-				if(err != noErr) {
-					//Failing that, TIFF.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeTIFF, &imageData);
-				}
-				if(err != noErr) {
-					//Failing that, QuickTime image.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypeQuickTimeImage, &imageData);
-				}
-				if(err != noErr) {
-					//Failing that, PNG.
-					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, kUTTypePNG, &imageData);
-				}
-			}
-
-			if(err != noErr) {
-				fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li (%s)\n", argv0, index, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
-				retval = 2;
-			} else if(stringData) {
-				if(pbptr->flags.infer_translate_newlines)
-					pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, kUTTypeText);
-				if(pbptr->flags.translate_newlines) {
-					CFIndex length = CFDataGetLength(stringData);
-					CFMutableDataRef mutableStringData = CFDataCreateMutableCopy(kCFAllocatorDefault, length, stringData);
-					unsigned char *ptr = CFDataGetMutableBytePtr(mutableStringData);
-
-					for(CFIndex i = 0LL; i < length; ++i)
-						*(ptr++) = nl_translate_table[*(ptr++)];
-
-					CFRelease(stringData);
-					stringData = mutableStringData;
-				}
-
-				if(stringData) {
-					//Create the notification description.
-					desc = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault, stringData, stringEncoding);
-					printf("created description %p from data %p in encoding %u\n", desc, stringData, stringEncoding);
-					CFRelease(stringData);
-				}
-			}
-
-			if(retval) {
-				fprintf(stderr, "%s: error pasting item %u from pasteboard \"%s\"\n", argv0, index, make_pasteboardID_cstr(pbptr));
-				break;
-			}
-		} //while((index < numItems) && !(imageData && desc))
-
-		CFStringRef notificationName = CFSTR("pb Growl output");
-		CFArrayRef notificationNames = CFArrayCreate(kCFAllocatorDefault, (const void **)&notificationName, 1, &kCFTypeArrayCallBacks);
-		CFMutableDictionaryRef userInfo = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-		CFNotificationCenterRef dnc = CFNotificationCenterGetDistributedCenter();
-
-		//Register with Growl.
-		CFDictionarySetValue(userInfo, GROWL_APP_NAME, CFSTR("pb"));
-		CFDictionarySetValue(userInfo, GROWL_NOTIFICATIONS_ALL, notificationNames);
-		CFDictionarySetValue(userInfo, GROWL_NOTIFICATIONS_DEFAULT, notificationNames);
-		CFNotificationCenterPostNotification(dnc, GROWL_APP_REGISTRATION, /*object*/ NULL, userInfo, /*deliverImmediately*/ false);
-
-		CFDictionaryRemoveValue(userInfo, GROWL_NOTIFICATIONS_ALL);
-		CFDictionaryRemoveValue(userInfo, GROWL_NOTIFICATIONS_DEFAULT);
-
-		//Post the notification.
-		CFDictionarySetValue(userInfo, GROWL_NOTIFICATION_NAME, notificationName);
-		CFDictionarySetValue(userInfo, GROWL_NOTIFICATION_TITLE, pbptr->pasteboardID);
-		printf("desc: %p\nimageData: %p\n", desc, imageData);
-		if(desc) {
-			CFDictionarySetValue(userInfo, GROWL_NOTIFICATION_DESCRIPTION, desc);
-			CFRelease(desc);
-		}
-		if(imageData) {
-			CFDictionarySetValue(userInfo, GROWL_NOTIFICATION_ICON, imageData);
-			CFRelease(imageData);
-		}
-		CFNotificationCenterPostNotification(dnc, GROWL_NOTIFICATION, /*object*/ NULL, userInfo, /*deliverImmediately*/ false);
-
-		CFRelease(notificationNames);
-		CFRelease(userInfo);
-	} //if(!index)
-
-	return retval;
 }
 int count(struct argblock *pbptr) {
 	ItemCount num;
