@@ -113,6 +113,11 @@ int main(int argc, const char **argv) {
 	pb.argc = argc;
 	pb.argv = ++argv;
 
+	if (pb.in_fd == -1)
+		pb.in_fd = STDIN_FILENO;
+	if (pb.out_fd == -1)
+		pb.out_fd = STDOUT_FILENO;
+
 	OSStatus err;
 
 	if(retval == 0) {
