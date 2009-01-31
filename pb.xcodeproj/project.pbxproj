@@ -106,9 +106,11 @@
 		08FB7793FE84155DC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 07F5735C0A7EF841009C461B /* Build configuration list for PBXProject "pb" */;
+			compatibilityVersion = "Xcode 2.4";
 			hasScannedForEncodings = 1;
 			mainGroup = 08FB7794FE84155DC02AAC07 /* pb */;
 			projectDirPath = "";
+			projectRoot = "";
 			targets = (
 				8DD76F740486A8DE00D96B5E /* pb */,
 			);
