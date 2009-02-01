@@ -33,15 +33,13 @@ struct argblock {
 	CFStringRef type; //UTI
 
 	struct {
-		unsigned reserved: 27;
+		unsigned reserved: 29;
 		enum {
 			global_options,
 			subcommand,
 			subcommand_options
 		} phase: 2;
 		unsigned has_args: 1;
-		unsigned infer_translate_newlines: 1; //Fill in translate_newlines based on value of type. Default 1; set to 0 when translate_newlines is set explicitly.
-		unsigned translate_newlines: 1;
 	} flags;
 } pb;
 
@@ -74,25 +72,6 @@ int  help(struct argblock *pbptr);
 int version(struct argblock *pbptr);
 
 const char *argv0 = NULL;
-
-//This table swaps ^M (\x0d) and ^J (\x0a).
-static const unsigned char nl_translate_table[256] = 
-"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\r\x0b\x0c\n\x0e\x0f"
-"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
-"\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f"
-"\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f"
-"\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f"
-"\x50\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f"
-"\x60\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f"
-"\x70\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f"
-"\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f"
-"\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f"
-"\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf"
-"\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf"
-"\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf"
-"\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf"
-"\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef"
-"\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff";
 
 static CFStringRef MacRoman_UTI = CFSTR("com.apple.traditional-mac-plain-text");
 
@@ -183,8 +162,6 @@ static inline void initpb(struct argblock *pbptr) {
 	pbptr->flags.reserved                 = 0U;
 	pbptr->flags.phase                    = global_options;
 	pbptr->flags.has_args                 = false;
-	pbptr->flags.infer_translate_newlines = true;
-	pbptr->flags.translate_newlines       = true;
 }
 
 int parsearg(const char *arg, struct argblock *pbptr) {
@@ -204,12 +181,6 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 				pbptr->out_fd = open(param, O_WRONLY | O_CREAT, 0644);
 				if(pbptr->out_fd != -1)
 					pbptr->filename = param;
-			} else if(testarg(arg, "--no-translate-newlines", NULL)) {
-				pbptr->flags.infer_translate_newlines = false;
-				pbptr->flags.translate_newlines       = false;
-			} else if(testarg(arg, "--translate-newlines", NULL)) {
-				pbptr->flags.infer_translate_newlines = false;
-				pbptr->flags.translate_newlines       = true;
 			} else if(testarg(arg, "copy", NULL)
 				 || testarg(arg, "paste", NULL)
 				 || testarg(arg, "clear", NULL)
@@ -346,17 +317,6 @@ int copy(struct argblock *pbptr) {
 	if(err != noErr) {
 		fprintf(stderr, "%s copy: could not clear pasteboard %s because PasteboardClear returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
-	}
-
-	if(pbptr->flags.infer_translate_newlines)
-		pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, kUTTypeText);
-	if(pbptr->flags.translate_newlines) {
-		unsigned char *ptr = (unsigned char *)buf;
-
-		for(unsigned long long i = 0ULL; i < total_size; ++i) {
-			*ptr = nl_translate_table[*ptr];
-			++ptr;
-		}
 	}
 
 	PasteboardItemID item = getRandomPasteboardItemID();
@@ -502,25 +462,7 @@ int paste_one(struct argblock *pbptr) {
 			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
 		retval = 2;
 	} else {
-		CFIndex length = CFDataGetLength(data);
-		const unsigned char *rptr = CFDataGetBytePtr(data);
-		void *buf = NULL;
-		if(pbptr->flags.infer_translate_newlines)
-			pbptr->flags.translate_newlines = UTTypeConformsTo(pbptr->type, MacRoman_UTI);
-		if(pbptr->flags.translate_newlines) {
-			buf = malloc(length);
-			unsigned char *wptr = buf;
-
-			for(unsigned long long i = 0ULL; i < length; ++i)
-				*(wptr++) = nl_translate_table[*(rptr++)];
-
-			rptr = buf;
-		}
-
-		write(pbptr->out_fd, rptr, length);
-
-		if(buf)
-			free(buf);
+		write(pbptr->out_fd, CFDataGetBytePtr(data), CFDataGetLength(data));
 	}
 
 	if(data)
@@ -558,7 +500,6 @@ int paste(struct argblock *pbptr) {
 			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
 			Boolean has_encountered_index = false;
-			Boolean has_encountered_translate_newlines = false;
 			UInt32 numericValue;
 
 			while(*(pbptr->argv) && !(pbptr->filename && type_cstr && index_cstr)) {
@@ -570,11 +511,9 @@ int paste(struct argblock *pbptr) {
 					else
 						break;
 				} else if(compare_argument('t', "type", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
-					if(!pbptr->type) {
+					if(!pbptr->type)
 						pbptr->type = create_UTI_with_cstr(option_arg);
-						if(!has_encountered_translate_newlines)
-							pbptr->flags.infer_translate_newlines = true;
-					} else
+					else
 						break;
 				} else if(compare_argument('i', "index", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
 					if(!index_cstr) {
@@ -596,14 +535,6 @@ int paste(struct argblock *pbptr) {
 						}
 					} else
 						break;
-				} else if(compare_argument(0, "translate-newlines", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
-					has_encountered_translate_newlines = true;
-					pbptr->flags.infer_translate_newlines = false;
-					pbptr->flags.translate_newlines       = true;
-				} else if(compare_argument(0, "no-translate-newlines", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, NULL) == option_comparison_longopt) {
-					has_encountered_translate_newlines = true;
-					pbptr->flags.infer_translate_newlines = false;
-					pbptr->flags.translate_newlines       = false;
 				} else if(*(*(pbptr->argv)) == '-') {
 					fprintf(stderr, "%s: Internal error: Unrecognized argument “%s”\n", argv0, *(pbptr->argv));
 					return 1;
@@ -623,8 +554,6 @@ int paste(struct argblock *pbptr) {
 						else {
 							type_cstr = *((pbptr->argv)++);
 							pbptr->type = type;
-							if(!has_encountered_translate_newlines)
-								pbptr->flags.infer_translate_newlines = true;
 						}
 					} else {
 						if(pbptr->filename)
