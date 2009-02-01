@@ -550,7 +550,6 @@ int paste(struct argblock *pbptr) {
 		struct argblock  these_args     = *pbptr;
 		struct argblock *these_args_ptr = &these_args;
 
-		const char *filename = NULL;
 		const char *type_cstr = NULL;
 		CFStringRef type = NULL;
 		const char *index_cstr = NULL;
@@ -562,12 +561,12 @@ int paste(struct argblock *pbptr) {
 			Boolean has_encountered_translate_newlines = false;
 			UInt32 numericValue;
 
-			while(*(pbptr->argv) && !(filename && type_cstr && index_cstr)) {
+			while(*(pbptr->argv) && !(pbptr->filename && type_cstr && index_cstr)) {
 				const char *option_arg = NULL;
 
 				if(compare_argument('f', "file", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
-					if(!filename)
-						filename = option_arg;
+					if(!(pbptr->filename))
+						pbptr->filename = option_arg;
 					else
 						break;
 				} else if(compare_argument('t', "type", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
@@ -628,17 +627,17 @@ int paste(struct argblock *pbptr) {
 								pbptr->flags.infer_translate_newlines = true;
 						}
 					} else {
-						if(filename)
+						if(pbptr->filename)
 							break;
 						else
-							filename = *((pbptr->argv)++);
+							pbptr->filename = *((pbptr->argv)++);
 					}
 				}
 			}
 
 			these_args = *pbptr;
 			if(these_args_ptr->out_fd < 0)
-				these_args_ptr->out_fd    = filename ? open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644) : STDOUT_FILENO;
+				these_args_ptr->out_fd    = pbptr->filename ? open(pbptr->filename, O_WRONLY | O_CREAT | O_TRUNC, 0644) : STDOUT_FILENO;
 			if(!these_args_ptr->type)
 				these_args_ptr->type      = kUTTypeUTF8PlainText; //Don't retain; borrow the retention by pbptr.
 			if(!these_args_ptr->itemIndex)
@@ -652,7 +651,7 @@ int paste(struct argblock *pbptr) {
 				close(pbptr->out_fd);
 				pbptr->out_fd = -1;
 			}
-			filename = NULL;
+			pbptr->filename = NULL;
 			pbptr->type = NULL;
 			++pbptr->itemIndex;
 		}
