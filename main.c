@@ -317,8 +317,11 @@ int copy(struct argblock *pbptr) {
 			else {                                                                                             \
 				/*This is a filename.*/                                                                         \
 				pbptr->in_fd = open(*(pbptr->argv), O_RDONLY, 0644);                                             \
-			}                                                                                                     \
-			++(pbptr->argv); --(pbptr->argc);                                                                      \
+				if(pbptr->in_fd != -1)                                                                            \
+					pbptr->filename = *(pbptr->argv);                                                              \
+                                                                                                                    \
+			}                                                                                                        \
+			++(pbptr->argv); --(pbptr->argc);                                                                         \
 		}
 	CONSUME_ARG
 	CONSUME_ARG
