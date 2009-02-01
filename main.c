@@ -57,6 +57,8 @@ static CFDataRef createCFDataFromCFString(CFStringRef string);
 //If the given C-string is not a known UTI, returns NULL. Otherwise returns a CFString for it.
 static CFStringRef create_UTI_with_cstr(const char *arg);
 
+static Boolean copy_type_by_filename(struct argblock *pbptr);
+
 static inline void initpb(struct argblock *pbptr);
 static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding);
 static const char *make_pasteboardID_cstr(struct argblock *pbptr);
@@ -234,6 +236,59 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 
 #pragma mark -
 
+static Boolean copy_type_by_filename(struct argblock *pbptr) {
+	Boolean success = false;
+
+	if(pbptr->filename) {
+		FSRef ref;
+		Boolean isDir;
+		OSStatus err = FSPathMakeRef((const UInt8 *)(pbptr->filename), &ref, &isDir);
+		if (err == noErr)
+			err = LSCopyItemAttribute(&ref, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&(pbptr->type));
+
+		if(!(pbptr->type)) {
+			//Presumably, the file doesn't exist (FSPathMakeRef failed). Let's try breaking off the filename extension and looking it up.
+			CFStringRef pathCF = CFStringCreateWithCString(kCFAllocatorDefault, pbptr->filename, kCFStringEncodingUTF8);
+			if(pathCF) {
+				CFIndex length = CFStringGetLength(pathCF);
+				UniChar *buffer = malloc(length * sizeof(UniChar));
+				if(buffer) {
+					CFStringGetCharacters(pathCF, (CFRange){ 0, length }, buffer);
+
+					UniCharCount startIndex = 0U;
+					err = LSGetExtensionInfo(length, buffer, &startIndex);
+					if(err == noErr) {
+						CFStringRef extension = CFStringCreateWithSubstring(kCFAllocatorDefault, pathCF, (CFRange){ startIndex, length - startIndex });
+
+						//Here's where the actual look-up occurs.
+						if(extension) {
+							pbptr->type = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, extension, /*conformingToUTI*/ NULL);
+
+							CFRelease(extension);
+						}
+					}
+
+					free(buffer);
+				}
+
+				CFRelease(pathCF);
+			}
+		}
+
+		if(pbptr->type) {
+			//Don't allow kUTTypePlainText (.txt). If we get this, just return NULL.
+			if(UTTypeEqual(pbptr->type, kUTTypePlainText)) {
+				CFRelease(pbptr->type);
+				pbptr->type = NULL;
+			}
+		}
+
+		success = (pbptr->type != NULL);
+	}
+
+	return success;
+}
+
 static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding) {
 	const char *result = NULL;
 	if(in) {
@@ -324,15 +379,23 @@ int copy(struct argblock *pbptr) {
 	CFStringRef string;
 	CFDataRef data = NULL;
 	if(pbptr->type == NULL) {
-		//Assume it's UTF-8. Convert it to UTF-16 with BOM.
-		string = CFStringCreateWithBytes(kCFAllocatorDefault, (const unsigned char *)buf, total_size, kCFStringEncodingUTF8, /*isExternalRepresentation*/ false);
-		if(string == NULL) {
-			//So much for that. Call it MacRoman and copy the pure bytes.
-			pbptr->type = CFRetain(MacRoman_UTI);
-			goto pure_data;
+		//Try to get a type by filename extension.
+		if(!copy_type_by_filename(pbptr)) {
+			//We couldn't figure out a type, so let's see whether it's valid UTF-8.
+			string = CFStringCreateWithBytes(kCFAllocatorDefault, (const unsigned char *)buf, total_size, kCFStringEncodingUTF8, /*isExternalRepresentation*/ false);
+			if(string != NULL) {
+				pbptr->type = CFRetain(kUTTypeUTF8PlainText);
+
+				//We don't actually use the string for anything.
+				CFRelease(string);
+			} else {
+				//Apparently not. Our best guess is to call it MacRoman and copy the pure bytes.
+				pbptr->type = CFRetain(MacRoman_UTI);
+				goto pure_data;
+			}
+
+			data = CFDataCreate(kCFAllocatorDefault, (const UInt8 *)buf, total_size);
 		}
-		data = CFStringCreateExternalRepresentation(kCFAllocatorDefault, string, kCFStringEncodingUnicode, /*lossByte*/ 0U);
-		pbptr->type = CFRetain(kUTTypeUTF16ExternalPlainText);
 	}
 	if(!data) {
 pure_data:
