@@ -196,11 +196,15 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 			} else if(testarg(arg, "--pasteboard=", &param)) {
 				pbptr->pasteboardID_cstr = param;
 				pbptr->pasteboardID = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
-			} else if(testarg(arg, "--in-file=", &param))
+			} else if(testarg(arg, "--in-file=", &param)) {
 				pbptr->in_fd = open(param, O_RDONLY, 0644);
-			else if(testarg(arg, "--out-file=", &param))
+				if(pbptr->in_fd != -1)
+					pbptr->filename = param;
+			} else if(testarg(arg, "--out-file=", &param)) {
 				pbptr->out_fd = open(param, O_WRONLY | O_CREAT, 0644);
-			else if(testarg(arg, "--no-translate-newlines", NULL)) {
+				if(pbptr->out_fd != -1)
+					pbptr->filename = param;
+			} else if(testarg(arg, "--no-translate-newlines", NULL)) {
 				pbptr->flags.infer_translate_newlines = false;
 				pbptr->flags.translate_newlines       = false;
 			} else if(testarg(arg, "--translate-newlines", NULL)) {
