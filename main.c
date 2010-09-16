@@ -171,6 +171,7 @@ int parsearg(const char *arg, struct argblock *pbptr) {
 	switch(pbptr->flags.phase) {
 		case global_options:
 			if(testarg(arg, "--type=", &param)) {
+				//Don't use create_UTI_with_cstr here because the user should be able to explicitly request a type that might not have been declared.
 				pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, param, kCFStringEncodingUTF8);
 			} else if(testarg(arg, "--pasteboard=", &param)) {
 				pbptr->pasteboardID_cstr = param;
@@ -574,9 +575,10 @@ int paste(struct argblock *pbptr) {
 					else
 						break;
 				} else if(compare_argument('t', "type", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
-					if(!pbptr->type)
-						pbptr->type = create_UTI_with_cstr(option_arg);
-					else
+					if(!pbptr->type) {
+						//Don't use create_UTI_with_cstr here because the user should be able to explicitly request a type that might not have been declared.
+						pbptr->type = CFStringCreateWithCString(kCFAllocatorDefault, option_arg, kCFStringEncodingUTF8);
+					} else
 						break;
 				} else if(compare_argument('i', "index", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, &option_arg) & option_comparison_eitheropt) {
 					if(!index_cstr) {
