@@ -698,6 +698,7 @@ int list(struct argblock *pbptr) {
 					printf("\t%s (??? bytes; PasteboardCopyItemFlavorData returned %li (%s))\n", flavor_c, (long)err, GetMacOSStatusCommentString(err));
 				//else...
 				//	printf("\t%s\n", flavor_c);
+				pb_deallocate((void *)flavor_c);
 			}
 		}
 	}
