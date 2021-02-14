@@ -6,14 +6,6 @@
 #include <sys/mman.h>
 #include "compare_argument.h"
 
-/*	To-do:
- *	- Add --file in copy and paste subcmds
- *	- Add multicopy subcmd: multicopy [options] filename [options] filename …
- *	- Collapse in_fd, out_fd to one FD.
- *	- Hook up convert_encodings.
- *	- Find a way to not assume UTF-8 I/O.
- */
-
 struct argblock {
 	int (*proc)(struct argblock *);
 
