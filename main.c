@@ -692,22 +692,31 @@ int list(struct argblock *pbptr) {
 			printf("\n#%u: %lu flavors\n", i, numFlavors);
 			for(CFIndex j = 0U; j < numFlavors; ++j) {
 				CFStringRef flavor = CFArrayGetValueAtIndex(flavors, j);
-				void (*deallocator)(const char *ptr) = NULL;
-				const char *flavor_c = make_cstr_for_CFStr(flavor, kCFStringEncodingUTF8, &deallocator);
+				void (*flavor_deallocator)(const char *ptr) = null_deallocator;
+				const char *flavor_c = make_cstr_for_CFStr(flavor, kCFStringEncodingUTF8, &flavor_deallocator);
+				CFStringRef tag = UTTypeCopyPreferredTagWithClass(flavor, kUTTagClassOSType);
+				void (*tag_deallocator)(const char *ptr) = null_deallocator;
+				const char *tag_c = tag ? make_cstr_for_CFStr(tag, kCFStringEncodingUTF8, &tag_deallocator) : NULL;
 
 				//Make this next step optional! (list --verbose, maybe)
 				//If verbose...
 				CFDataRef flavorData = NULL;
 				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, flavor, &flavorData);
 
+				printf("\t%s ", flavor_c);
+				if (tag_c != NULL && *tag_c != '\0') {
+					printf("'%s' ", tag_c);
+				}
 				if(err == noErr) {
-					printf("\t%s (%lli bytes)\n", flavor_c, (long long)CFDataGetLength(flavorData));
+					printf("(%lli bytes)\n", (long long)CFDataGetLength(flavorData));
 					CFRelease(flavorData);
-				} else
-					printf("\t%s (??? bytes; PasteboardCopyItemFlavorData returned %li (%s))\n", flavor_c, (long)err, GetMacOSStatusCommentString(err));
+				} else {
+					printf("(??? bytes; PasteboardCopyItemFlavorData returned %li (%s))\n", (long)err, GetMacOSStatusCommentString(err));
+				}
 				//else...
 				//	printf("\t%s\n", flavor_c);
-				deallocator(flavor_c);
+				flavor_deallocator(flavor_c);
+				tag_deallocator(tag_c);
 			}
 		}
 	}
