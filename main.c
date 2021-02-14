@@ -771,21 +771,24 @@ static void *pb_allocate(size_t nbytes) {
 }
 static void pb_deallocate(void *buf) {
 	struct allocation *allocation = firstAllocation;
-	if(!allocation) {
+
+	if(firstAllocation == NULL) {
 		//No allocations in the list; just free it.
 		free(buf);
-	} else if(allocation->ptr == buf) {
-		if(allocation == lastAllocation)
+	} else if(firstAllocation->ptr == buf) {
+		if(firstAllocation == lastAllocation)
 			lastAllocation = NULL;
+		//If we set lastAllocation to NULL above, this should set firstAllocation to NULL; otherwise they should both be non-NULL.
 		firstAllocation = allocation->next;
 		free(buf);
 		free(allocation);
 	} else {
-		while(allocation) {
-			if(allocation->next) {
+		//We now know the first allocation isn't it. Find one in the rest of the list that matches, and unlink it.
+		while(allocation != NULL) {
 				struct allocation *nextAllocation = allocation->next;
-
+			if(nextAllocation != NULL) {
 				if(nextAllocation->ptr == buf) {
+					//Gotcha. Unlink this element from the list.
 					allocation->next = nextAllocation->next;
 					if(nextAllocation == lastAllocation)
 						lastAllocation = NULL;
