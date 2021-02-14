@@ -79,7 +79,7 @@ enum option_comparison_result compare_argument(const char option_name_char, cons
 					}
 				}
 			}
-		} else if(*arg == option_name_char) {
+		} else if(option_name_char && *arg == option_name_char) {
 			//Short option (e.g. -f).
 			if(out_option_arg) {
 				if(*arg != '\0') ++arg;
