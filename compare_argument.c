@@ -1,6 +1,7 @@
 #include "compare_argument.h"
 
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -103,7 +104,7 @@ enum option_comparison_result compare_argument(const char option_name_char, cons
 	if(out_argv)
 		*out_argv = argv;
 	if(out_args_consumed)
-		*out_args_consumed = argv - orig_argv;
+		*out_args_consumed = (unsigned int)(ptrdiff_t)(argv - orig_argv);
 
 	return result;
 }

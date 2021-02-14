@@ -21,7 +21,7 @@ struct argblock {
 	CFStringRef pasteboardID;
 	const char *pasteboardID_cstr;
 
-	UInt32 itemIndex;
+	CFIndex itemIndex;
 
 	CFStringRef type; //UTI
 
@@ -78,7 +78,7 @@ int main(int argc, const char **argv) {
 	initpb(&pb);
 	
 	while((--argc) && (pb.flags.phase != subcommand_options)) {
-		if(retval = parsearg(*++argv, &pb))
+		if((retval = parsearg(*++argv, &pb)))
 			break;
 	}
 	//The subcommand gets our leftover arguments.
@@ -135,7 +135,8 @@ int main(int argc, const char **argv) {
 
 Boolean testarg(const char *a, const char *b, const char **param) {
 	while((*a) && (*a == *b) && (*b != '=')) {
-		++a, ++b;
+		++a;
+		++b;
 	}
 
 	if(param) *param = (*a == '=') ? &a[1] : NULL;
@@ -293,7 +294,7 @@ static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding
 			CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, /*buffer*/ NULL, /*maxBufLen*/ 0, &numBytes);
 			char *buf = pb_allocate(numBytes + 1U);
 			if(buf) {
-				CFIndex numChars = CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, (unsigned char *)buf, /*maxBufLen*/ numBytes, &numBytes);
+				CFIndex numChars __attribute__((unused)) = CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, (unsigned char *)buf, /*maxBufLen*/ numBytes, &numBytes);
 				buf[numBytes] = 0;
 			}
 			result = buf;
@@ -315,8 +316,7 @@ static PasteboardItemID getRandomPasteboardItemID(void) {
 
 	PasteboardItemID item;
 
-	srandom(time(NULL));
-	item = (PasteboardItemID)random();
+	item = (PasteboardItemID)(unsigned long)arc4random();
 
 	//An item ID of 0 is illegal. Make sure it doesn't happen.
 	if(item == 0)
@@ -462,7 +462,7 @@ pure_data:
 	free(buf);
 
 	if(err != noErr) {
-		fprintf(stderr, "%s copy: could not copy to pasteboard %s because PasteboardPutItemFlavor returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), err);
+		fprintf(stderr, "%s copy: could not copy to pasteboard %s because PasteboardPutItemFlavor returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
 		retval = 2;
 	}
 
@@ -514,9 +514,9 @@ int paste_one(struct argblock *pbptr) {
 
 	if(err != noErr) {
 		if(err == badPasteboardFlavorErr)
-			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": it does not exist in flavor type \"%s\".\n", argv0, pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
+			fprintf(stderr, "%s: could not paste item %lu of pasteboard \"%s\": it does not exist in flavor type \"%s\".\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
 		else
-			fprintf(stderr, "%s: could not paste item %u of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li\n", argv0, pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+			fprintf(stderr, "%s: could not paste item %lu of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li (%s)\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
 		retval = 2;
 	} else {
 		write(pbptr->out_fd, CFDataGetBytePtr(data), CFDataGetLength(data));
@@ -528,7 +528,6 @@ int paste_one(struct argblock *pbptr) {
 	return retval;
 }
 int paste(struct argblock *pbptr) {
-	int retval = 0;
 	ItemCount numItems = 0U;
 	OSStatus err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 	if(err != noErr) {
@@ -541,11 +540,10 @@ int paste(struct argblock *pbptr) {
 			pbptr->out_fd = STDOUT_FILENO;
 		if(!(pbptr->type))
 			pbptr->type = CFRetain(kUTTypeUTF8PlainText);
-		if((pbptr->itemIndex) == 0U)
-			pbptr->itemIndex = 1U;
+		if((pbptr->itemIndex) == 0UL)
+			pbptr->itemIndex = 1UL;
 		return paste_one(pbptr);
 	} else {
-		UInt32 index = 1U;
 		struct argblock  these_args     = *pbptr;
 		struct argblock *these_args_ptr = &these_args;
 
@@ -557,7 +555,7 @@ int paste(struct argblock *pbptr) {
 			//If two option values after the paste command collide (e.g. two filenames), paste_one is invoked with the first value, and then we will begin a new set of arguments with the second value.
 			//If we get all three option values (filename, type, index), paste_one is invoked, and then we begin a new set of arguments.
 			Boolean has_encountered_index = false;
-			UInt32 numericValue;
+			CFIndex numericValue;
 
 			while(*(pbptr->argv) && !(pbptr->filename && type_cstr && index_cstr)) {
 				const char *option_arg = NULL;
@@ -578,10 +576,10 @@ int paste(struct argblock *pbptr) {
 						index_cstr = option_arg;
 						numericValue = strtoul(index_cstr, NULL, 10);
 						if(numericValue == 0U) {
-							fprintf(stderr, "%s: Invalid index %u\n", argv0, numericValue);
+							fprintf(stderr, "%s: Invalid index %lu\n", argv0, numericValue);
 							return 1;
 						} else if(numericValue > numItems) {
-							fprintf(stderr, "%s: Index %u exceeds number of items %u\n", argv0, numericValue, numItems);
+							fprintf(stderr, "%s: Index %lu exceeds number of items %lu\n", argv0, (unsigned long)numericValue, numItems);
 							return 1;
 						} else {
 							if(has_encountered_index)
