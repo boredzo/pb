@@ -53,8 +53,8 @@ static CFStringRef create_UTI_with_cstr(const char *arg);
 static Boolean copy_type_by_filename(struct argblock *pbptr);
 
 static inline void initpb(struct argblock *pbptr);
-static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding);
-static const char *make_pasteboardID_cstr(struct argblock *pbptr);
+static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding, void (**outDeallocator)(const char *ptr));
+static const char *make_pasteboardID_cstr(struct argblock *pbptr, void (**outDeallocator)(const char *ptr));
 
 int parsearg(const char *arg, struct argblock *pbptr);
 
@@ -98,7 +98,7 @@ int main(int argc, const char **argv) {
 
 		err = PasteboardCreate(pb.pasteboardID, &(pb.pasteboard));
 		if(err != noErr) {
-			fprintf(stderr, "%s: could not create pasteboard reference for pasteboard ID %s", argv0, make_pasteboardID_cstr(&pb));
+			fprintf(stderr, "%s: could not create pasteboard reference for pasteboard ID %s", argv0, make_pasteboardID_cstr(&pb, /*deallocator*/ NULL));
 			retval = 1;
 		}
 	}
@@ -284,8 +284,12 @@ static Boolean copy_type_by_filename(struct argblock *pbptr) {
 	return success;
 }
 
-static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding) {
+static void null_deallocator(const char *ptr) {
+}
+
+static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding, void (**outDeallocator)(const char *ptr)) {
 	const char *result = NULL;
+	void (*deallocator)(const char *ptr) = null_deallocator;
 	if(in) {
 		result = CFStringGetCStringPtr(in, encoding);
 		if(result == NULL) {
@@ -296,15 +300,19 @@ static const char *make_cstr_for_CFStr(CFStringRef in, CFStringEncoding encoding
 			if(buf) {
 				CFIndex numChars __attribute__((unused)) = CFStringGetBytes(in, IDrange, encoding, /*lossByte*/ 0U, /*isExternalRepresentation*/ false, (unsigned char *)buf, /*maxBufLen*/ numBytes, &numBytes);
 				buf[numBytes] = 0;
+				deallocator = (void (*)(const char *ptr))pb_deallocate;
 			}
 			result = buf;
 		}
 	}
+	if(outDeallocator) {
+		*outDeallocator = deallocator;
+	}
 	return result;
 }
-static const char *make_pasteboardID_cstr(struct argblock *pbptr) {
+static const char *make_pasteboardID_cstr(struct argblock *pbptr, void(**outDeallocator)(const char *ptr)) {
 	if(pbptr->pasteboardID_cstr == NULL)
-		pbptr->pasteboardID_cstr = make_cstr_for_CFStr(pbptr->pasteboardID, kCFStringEncodingUTF8);
+		pbptr->pasteboardID_cstr = make_cstr_for_CFStr(pbptr->pasteboardID, kCFStringEncodingUTF8, outDeallocator);
 	return pbptr->pasteboardID_cstr;
 }
 
@@ -364,7 +372,7 @@ int copy(struct argblock *pbptr) {
 
 	err = PasteboardClear(pbptr->pasteboard);
 	if(err != noErr) {
-		fprintf(stderr, "%s copy: could not clear pasteboard %s because PasteboardClear returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s copy: could not clear pasteboard %s because PasteboardClear returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
 	}
 
@@ -397,7 +405,7 @@ pure_data:
 		if(data == NULL)
 			data = CFDataCreate(kCFAllocatorDefault, (const unsigned char *)buf, total_size);
 		if(data == NULL) {
-			fprintf(stderr, "%s copy: could not create CFData object for copy to pasteboard %s\n", argv0, make_pasteboardID_cstr(pbptr));
+			fprintf(stderr, "%s copy: could not create CFData object for copy to pasteboard %s\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL));
 			return 2;
 		}
 	}
@@ -405,7 +413,7 @@ pure_data:
 	//Always do this first.
 	err = PasteboardPutItemFlavor(pbptr->pasteboard, item, pbptr->type, data, kPasteboardFlavorNoFlags);
 	if(err != noErr) {
-		fprintf(stderr, "%s copy: could not copy data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s copy: could not copy data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 	}
 
 	//Translate encodings.
@@ -431,28 +439,28 @@ pure_data:
 		if(UTF16Data && !typeIsUTF16) {
 			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeUTF16PlainText, UTF16Data, kPasteboardFlavorSenderTranslated);
 			if(err != noErr) {
-				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(kUTTypeUTF16PlainText, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(kUTTypeUTF16PlainText, kCFStringEncodingUTF8, /*deallocator*/ NULL), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 				err = noErr; //These aren't critically-important.
 			}
 		}
 		if(UTF16ExtData && !typeIsUTF16Ext) {
 			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeUTF16ExternalPlainText, UTF16ExtData, kPasteboardFlavorSenderTranslated);
 			if(err != noErr) {
-				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(kUTTypeUTF16ExternalPlainText, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(kUTTypeUTF16ExternalPlainText, kCFStringEncodingUTF8, /*deallocator*/ NULL), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 				err = noErr; //These aren't critically-important.
 			}
 		}
 		if(UTF8Data && !typeIsUTF8) {
 			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, kUTTypeUTF8PlainText, UTF8Data, kPasteboardFlavorSenderTranslated);
 			if(err != noErr) {
-				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(kUTTypeUTF8PlainText, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(kUTTypeUTF8PlainText, kCFStringEncodingUTF8, /*deallocator*/ NULL), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 				err = noErr; //These aren't critically-important.
 			}
 		}
 		if(MacRomanData && !typeIsMacRoman) {
 			err = PasteboardPutItemFlavor(pbptr->pasteboard, item, MacRoman_UTI, MacRomanData, kPasteboardFlavorSenderTranslated);
 			if(err != noErr) {
-				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(MacRoman_UTI, kCFStringEncodingUTF8), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+				fprintf(stderr, "%s copy: could not copy alternate \"%s\" data for main type \"%s\": PasteboardPutItemFlavor returned error %li (%s)\n", argv0, make_cstr_for_CFStr(MacRoman_UTI, kCFStringEncodingUTF8, /*deallocator*/ NULL), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 				err = noErr; //These aren't critically-important.
 			}
 		}
@@ -462,7 +470,7 @@ pure_data:
 	free(buf);
 
 	if(err != noErr) {
-		fprintf(stderr, "%s copy: could not copy to pasteboard %s because PasteboardPutItemFlavor returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s copy: could not copy to pasteboard %s because PasteboardPutItemFlavor returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		retval = 2;
 	}
 
@@ -475,7 +483,7 @@ int paste_one(struct argblock *pbptr) {
 	PasteboardItemID item;
 	err = PasteboardGetItemIdentifier(pbptr->pasteboard, pbptr->itemIndex, &item);
 	if(err != noErr) {
-		fprintf(stderr, "%s: can't find item %lu on pasteboard %s: PasteboardGetItemIdentifier returned %li (%s)\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s: can't find item %lu on pasteboard %s: PasteboardGetItemIdentifier returned %li (%s)\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
 	}
 
@@ -514,9 +522,9 @@ int paste_one(struct argblock *pbptr) {
 
 	if(err != noErr) {
 		if(err == badPasteboardFlavorErr)
-			fprintf(stderr, "%s: could not paste item %lu of pasteboard \"%s\": it does not exist in flavor type \"%s\".\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8));
+			fprintf(stderr, "%s: could not paste item %lu of pasteboard \"%s\": it does not exist in flavor type \"%s\".\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8, /*deallocator*/ NULL));
 		else
-			fprintf(stderr, "%s: could not paste item %lu of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li (%s)\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8), (long)err, GetMacOSStatusCommentString(err));
+			fprintf(stderr, "%s: could not paste item %lu of pasteboard \"%s\": PasteboardCopyItemFlavorData (for flavor type \"%s\") returned error %li (%s)\n", argv0, (unsigned long)pbptr->itemIndex, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), make_cstr_for_CFStr(pbptr->type, kCFStringEncodingUTF8, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		retval = 2;
 	} else {
 		write(pbptr->out_fd, CFDataGetBytePtr(data), CFDataGetLength(data));
@@ -531,7 +539,7 @@ int paste(struct argblock *pbptr) {
 	ItemCount numItems = 0U;
 	OSStatus err = PasteboardGetItemCount(pbptr->pasteboard, &numItems);
 	if(err != noErr) {
-		fprintf(stderr, "%s: could not determine how many items are on pasteboard %s: PasteboardGetItemCount returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s: could not determine how many items are on pasteboard %s: PasteboardGetItemCount returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
 	}
 
@@ -648,7 +656,7 @@ int count(struct argblock *pbptr) {
 	ItemCount num;
 	OSStatus err = PasteboardGetItemCount(pbptr->pasteboard, &num);
 	if(err != noErr) {
-		fprintf(stderr, "%s count: PasteboardGetItemCount for pasteboard %s returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s count: PasteboardGetItemCount for pasteboard %s returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
 	}
 	printf("%lu\n", (unsigned long)num);
@@ -658,7 +666,7 @@ int list(struct argblock *pbptr) {
 	ItemCount num;
 	OSStatus err = PasteboardGetItemCount(pbptr->pasteboard, &num);
 	if(err != noErr) {
-		fprintf(stderr, "%s list: PasteboardGetItemCount for pasteboard %s returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s list: PasteboardGetItemCount for pasteboard %s returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
 	}
 	CFShow(pbptr->pasteboardID);
@@ -670,13 +678,13 @@ int list(struct argblock *pbptr) {
 
 			err = PasteboardGetItemIdentifier(pbptr->pasteboard, i, &item);
 			if(err != noErr) {
-				fprintf(stderr, "%s list: PasteboardGetItemIdentifier for pasteboard %s item %lu returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (unsigned long)i, (long)err, GetMacOSStatusCommentString(err));
+				fprintf(stderr, "%s list: PasteboardGetItemIdentifier for pasteboard %s item %lu returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (unsigned long)i, (long)err, GetMacOSStatusCommentString(err));
 				break;
 			}
 
 			err = PasteboardCopyItemFlavors(pbptr->pasteboard, item, &flavors);
 			if(err != noErr) {
-				fprintf(stderr, "%s list: PasteboardCopyItemFlavors for pasteboard %s item %lu (object address %p) returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (unsigned long)i, item, (long)err, GetMacOSStatusCommentString(err));
+				fprintf(stderr, "%s list: PasteboardCopyItemFlavors for pasteboard %s item %lu (object address %p) returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (unsigned long)i, item, (long)err, GetMacOSStatusCommentString(err));
 				break;
 			}
 
@@ -684,7 +692,8 @@ int list(struct argblock *pbptr) {
 			printf("\n#%u: %lu flavors\n", i, numFlavors);
 			for(CFIndex j = 0U; j < numFlavors; ++j) {
 				CFStringRef flavor = CFArrayGetValueAtIndex(flavors, j);
-				const char *flavor_c = make_cstr_for_CFStr(flavor, kCFStringEncodingUTF8);
+				void (*deallocator)(const char *ptr) = NULL;
+				const char *flavor_c = make_cstr_for_CFStr(flavor, kCFStringEncodingUTF8, &deallocator);
 
 				//Make this next step optional! (list --verbose, maybe)
 				//If verbose...
@@ -698,7 +707,7 @@ int list(struct argblock *pbptr) {
 					printf("\t%s (??? bytes; PasteboardCopyItemFlavorData returned %li (%s))\n", flavor_c, (long)err, GetMacOSStatusCommentString(err));
 				//else...
 				//	printf("\t%s\n", flavor_c);
-				pb_deallocate((void *)flavor_c);
+				deallocator(flavor_c);
 			}
 		}
 	}
@@ -708,7 +717,7 @@ int list(struct argblock *pbptr) {
 int clear(struct argblock *pbptr) {
 	OSStatus err = PasteboardClear(pbptr->pasteboard);
 	if(err != noErr) {
-		fprintf(stderr, "%s clear: PasteboardClear for pasteboard %s returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr), (long)err, GetMacOSStatusCommentString(err));
+		fprintf(stderr, "%s clear: PasteboardClear for pasteboard %s returned %li (%s)\n", argv0, make_pasteboardID_cstr(pbptr, /*deallocator*/ NULL), (long)err, GetMacOSStatusCommentString(err));
 		return 2;
 	} else
 		return 0;
@@ -785,7 +794,7 @@ static void pb_deallocate(void *buf) {
 	} else {
 		//We now know the first allocation isn't it. Find one in the rest of the list that matches, and unlink it.
 		while(allocation != NULL) {
-				struct allocation *nextAllocation = allocation->next;
+			struct allocation *nextAllocation = allocation->next;
 			if(nextAllocation != NULL) {
 				if(nextAllocation->ptr == buf) {
 					//Gotcha. Unlink this element from the list.
@@ -796,6 +805,7 @@ static void pb_deallocate(void *buf) {
 					free(buf);
 				}
 			}
+			allocation = nextAllocation;
 		}
 	}
 }
