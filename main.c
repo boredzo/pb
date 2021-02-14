@@ -663,6 +663,12 @@ int count(struct argblock *pbptr) {
 	return 0;
 }
 int list(struct argblock *pbptr) {
+	bool showSizes = false;
+	if (pbptr->argc > 0) {
+		if (compare_argument('s', "show-sizes", pbptr->argv, &pbptr->argv, /*out_args_consumed*/ NULL, /*option_arg_optional*/ false, /*out_option_arg*/ NULL) & option_comparison_eitheropt) {
+			showSizes = true;
+		}
+	}
 	ItemCount num;
 	OSStatus err = PasteboardGetItemCount(pbptr->pasteboard, &num);
 	if(err != noErr) {
@@ -698,20 +704,24 @@ int list(struct argblock *pbptr) {
 				void (*tag_deallocator)(const char *ptr) = null_deallocator;
 				const char *tag_c = tag ? make_cstr_for_CFStr(tag, kCFStringEncodingUTF8, &tag_deallocator) : NULL;
 
-				//Make this next step optional! (list --verbose, maybe)
-				//If verbose...
 				CFDataRef flavorData = NULL;
-				err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, flavor, &flavorData);
+				if (showSizes) {
+					err = PasteboardCopyItemFlavorData(pbptr->pasteboard, item, flavor, &flavorData);
+				}
 
 				printf("\t%s ", flavor_c);
 				if (tag_c != NULL && *tag_c != '\0') {
 					printf("'%s' ", tag_c);
 				}
-				if(err == noErr) {
-					printf("(%lli bytes)\n", (long long)CFDataGetLength(flavorData));
-					CFRelease(flavorData);
+				if (showSizes) {
+					if(err == noErr) {
+						printf("(%lli bytes)\n", (long long)CFDataGetLength(flavorData));
+						CFRelease(flavorData);
+					} else {
+						printf("(??? bytes; PasteboardCopyItemFlavorData returned %li (%s))\n", (long)err, GetMacOSStatusCommentString(err));
+					}
 				} else {
-					printf("(??? bytes; PasteboardCopyItemFlavorData returned %li (%s))\n", (long)err, GetMacOSStatusCommentString(err));
+					printf("\n");
 				}
 				//else...
 				//	printf("\t%s\n", flavor_c);
