@@ -1,4 +1,5 @@
-#include <Carbon/Carbon.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <ApplicationServices/ApplicationServices.h>
 #include <sys/errno.h>
 #include <fcntl.h>
 #include <unistd.h>

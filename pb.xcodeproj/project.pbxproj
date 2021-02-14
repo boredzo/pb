@@ -7,17 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		07064EAB06F03B1F0027C06E /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 07064EAA06F03B1F0027C06E /* Carbon.framework */; };
 		079445FA0AB2D63A00EBD8D7 /* compare_argument.c in Sources */ = {isa = PBXBuildFile; fileRef = 079445F80AB2D63A00EBD8D7 /* compare_argument.c */; };
+		312C725A25D8E85300E88EB3 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 312C725825D8E84C00E88EB3 /* ApplicationServices.framework */; };
+		312C725B25D8E85700E88EB3 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 09AB6884FE841BABC02AAC07 /* CoreFoundation.framework */; };
 		8DD76F770486A8DE00D96B5E /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* main.c */; settings = {ATTRIBUTES = (); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		07064EAA06F03B1F0027C06E /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
 		079445F80AB2D63A00EBD8D7 /* compare_argument.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = compare_argument.c; sourceTree = "<group>"; };
 		079445F90AB2D63A00EBD8D7 /* compare_argument.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = compare_argument.h; sourceTree = "<group>"; };
 		08FB7796FE84155DC02AAC07 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		09AB6884FE841BABC02AAC07 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
+		312C725825D8E84C00E88EB3 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		8DD76F7E0486A8DE00D96B5E /* pb */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pb; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6859E970290921104C91782 /* pb.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = pb.1; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -27,7 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				07064EAB06F03B1F0027C06E /* Carbon.framework in Frameworks */,
+				312C725B25D8E85700E88EB3 /* CoreFoundation.framework in Frameworks */,
+				312C725A25D8E85300E88EB3 /* ApplicationServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -58,8 +60,8 @@
 		08FB779DFE84155DC02AAC07 /* External Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
-				07064EAA06F03B1F0027C06E /* Carbon.framework */,
 				09AB6884FE841BABC02AAC07 /* CoreFoundation.framework */,
+				312C725825D8E84C00E88EB3 /* ApplicationServices.framework */,
 			);
 			name = "External Frameworks and Libraries";
 			sourceTree = "<group>";
@@ -140,6 +142,7 @@
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				INSTALL_PATH = "$(HOME)/bin";
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				OTHER_CFLAGS = "-fconstant-cfstrings";
 				PRODUCT_NAME = pb;
 				ZERO_LINK = YES;
@@ -149,10 +152,6 @@
 		07F5735A0A7EF841009C461B /* Deployment */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = (
-					ppc,
-					i386,
-				);
 				COPY_PHASE_STRIP = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEPLOYMENT_POSTPROCESSING = YES;
@@ -161,6 +160,7 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				INSTALL_PATH = "$(HOME)/bin";
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				OTHER_CFLAGS = "-fconstant-cfstrings";
 				PRODUCT_NAME = pb;
 				ZERO_LINK = NO;
@@ -174,6 +174,7 @@
 				GCC_DYNAMIC_NO_PIC = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				INSTALL_PATH = "$(HOME)/bin";
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				OTHER_CFLAGS = "-fconstant-cfstrings";
 				PRODUCT_NAME = pb;
 			};
@@ -183,21 +184,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_C_LANGUAGE_STANDARD = c99;
-				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
 			};
 			name = Development;
 		};
 		07F5735E0A7EF841009C461B /* Deployment */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
 			};
 			name = Deployment;
 		};
 		07F5735F0A7EF841009C461B /* Default */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
 			};
 			name = Default;
 		};
