@@ -15,6 +15,7 @@ Most straightforwardly, `pb` with no arguments attempts to guess what you want a
 
 - `help` lists the subcommands.
 - `list` lists the items that are on the pasteboard and the types/flavors that each item carries.
+- `clear` empties the pasteboard. Thereafter, there will be no items on the pasteboard. (Basically, the same state your pasteboard is in on a fresh boot.)
 - `copy` reads from input and places the content on the pasteboard. By default, it assumes the input is plain text.
 - `paste` takes the content from the pasteboard (by default, assuming it's plain text) and writes it to output.
 
